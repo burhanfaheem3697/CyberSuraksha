@@ -81,7 +81,6 @@ exports.viewApprovedConsents = async (req, res) => {
 exports.listPartners = async (req, res) => {
   try {
     const partners = await Partner.find();
-    console.log(partners);
     res.json({ partners });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

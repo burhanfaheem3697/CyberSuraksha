@@ -7,16 +7,32 @@ const UserComponent = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loggedIn, setLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [loginError, setLoginError] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Placeholder: handle login logic here
-    setUser({ name: form.email.split('@')[0], email: form.email });
-    setLoggedIn(true);
+    setLoginError(null);
+    try {
+      const res = await fetch('http://localhost:5000/user/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUser(data.user);
+        setLoggedIn(true);
+      } else {
+        setLoginError(data.message || 'Login failed');
+      }
+    } catch (err) {
+      setLoginError('Network error');
+    }
   };
 
   if (showRegister) {
@@ -62,6 +78,7 @@ const UserComponent = () => {
           />
           <button type="submit" style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>Login</button>
         </form>
+        {loginError && <div style={{ color: 'red', marginTop: 16 }}>{loginError}</div>}
       </div>
     </div>
   );

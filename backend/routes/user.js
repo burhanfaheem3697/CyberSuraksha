@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware')
 router.post('/register', UserController.registerUser);
 
 // POST /user/login
-router.post('/login',authMiddleware, UserController.loginUser);
+router.post('/login', UserController.loginUser);
 
 // GET /user/consents (requires auth middleware)
 router.get('/consents', authMiddleware, UserController.viewConsents);
