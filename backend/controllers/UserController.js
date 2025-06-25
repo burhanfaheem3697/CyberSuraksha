@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Consent = require('../models/Consent');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const LoanRequest = require('../models/LoanRequest')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
@@ -34,6 +35,7 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
+    await LoanRequest.deleteMany()
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -53,9 +55,13 @@ exports.loginUser = async (req, res) => {
 exports.viewConsents = async (req, res) => {
   try {
     const userId = req.user.userId; // req.user is set by auth middleware
-    const consents = await Consent.find({ virtualUserId: { $in: req.user.virtualIds } })
-      .populate('partnerId', 'name email')
-      .populate('virtualUserId', 'virtualId');
+    // Fetch the user's virtualIds from the User model
+    const user = await User.findById(userId).select('virtualIds');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const consents = await Consent.find({ virtualUserId: { $in: user.virtualIds } })
+      .populate('partnerId', 'name email');
     res.json({ consents });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
