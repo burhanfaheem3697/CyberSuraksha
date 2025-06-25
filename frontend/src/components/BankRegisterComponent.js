@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 const BankRegisterComponent = ({ onBack }) => {
   const [form, setForm] = useState({
     name: '',
+    bankCode: '',
     email: '',
     password: '',
     description: '',
@@ -21,16 +22,22 @@ const BankRegisterComponent = ({ onBack }) => {
     setMessage(null);
     setError(null);
     try {
-      // Placeholder: No real /bank/register endpoint
-      setTimeout(() => {
-        setMessage('Registration successful! (placeholder)');
-        setForm({ name: '', email: '', password: '', description: '' });
-        setLoading(false);
-      }, 1000);
+      const res = await fetch('http://localhost:5000/bank/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage('Registration successful!');
+        setForm({ name: '', bankCode: '', email: '', password: '', description: '' });
+      } else {
+        setError(data.message || 'Registration failed');
+      }
     } catch (err) {
       setError('Network error');
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -38,6 +45,7 @@ const BankRegisterComponent = ({ onBack }) => {
       <h2>Bank Registration</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: 350, gap: 14 }}>
         <input name="name" placeholder="Name" value={form.name} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
+        <input name="bankCode" placeholder="Bank Code" value={form.bankCode} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
         <input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
         <input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
         <input name="description" placeholder="Description" value={form.description} onChange={handleChange} style={{ padding: 10, fontSize: 16 }} />
