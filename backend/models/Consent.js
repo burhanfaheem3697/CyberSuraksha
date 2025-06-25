@@ -11,4 +11,4 @@ const ConsentSchema = new mongoose.Schema({
   expiresAt: { type: Date }
 });
 
-module.exports = mongoose.model('Consent', ConsentSchema); 
+module.exports = mongoose.model('Consent', ConsentSchema);

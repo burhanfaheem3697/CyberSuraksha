@@ -36,7 +36,7 @@ exports.registerPartner = async (req, res) => {
 exports.createConsentRequest = async (req, res) => {
   try {
     const { virtualUserId, purpose, dataFields, duration } = req.body;
-    const partnerId = req.partner._id; // req.partner set by partner auth middleware
+    const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
     const consent = new Consent({
       virtualUserId,
       partnerId,
@@ -55,7 +55,7 @@ exports.createConsentRequest = async (req, res) => {
 // View all loan requests (for this partner)
 exports.viewLoanRequests = async (req, res) => {
   try {
-    const partnerId = req.partner._id;
+    const partnerId = req.partner.partnerId;
     // Find all loan requests associated with this partner's virtual IDs
     const loanRequests = await LoanRequest.find({ 
       partner_id: partnerId })
