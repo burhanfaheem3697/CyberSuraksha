@@ -7,16 +7,32 @@ const PartnerComponent = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [loggedIn, setLoggedIn] = useState(false);
   const [partner, setPartner] = useState(null);
+  const [loginError, setLoginError] = useState(null);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Placeholder: handle login logic here
-    setPartner({ name: form.email.split('@')[0], email: form.email });
-    setLoggedIn(true);
+    setLoginError(null);
+    try {
+      const res = await fetch('http://localhost:5000/partner/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPartner(data.partner);
+        setLoggedIn(true);
+      } else {
+        setLoginError(data.message || 'Login failed');
+      }
+    } catch (err) {
+      setLoginError('Network error');
+    }
   };
 
   if (showRegister) {
@@ -62,6 +78,7 @@ const PartnerComponent = () => {
           />
           <button type="submit" style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>Login</button>
         </form>
+        {loginError && <div style={{ color: 'red', marginTop: 16 }}>{loginError}</div>}
       </div>
     </div>
   );

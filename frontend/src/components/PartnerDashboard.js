@@ -26,7 +26,9 @@ const PartnerDashboard = ({ partner }) => {
     if (section === 'loans') {
       setLoansLoading(true);
       setLoansErr(null);
-      fetch('http://localhost:5000/partner/loan-requests')
+      fetch('http://localhost:5000/partner/loan-requests', {
+        credentials: 'include'
+      })
         .then(res => res.json())
         .then(data => {
           setLoans(data.loanRequests || []);
@@ -143,7 +145,7 @@ const PartnerDashboard = ({ partner }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {loans.map((loan) => (
                 <li key={loan._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
-                  <div><b>User:</b> {loan.userId?.name || loan.userId}</div>
+                  <div><b>VirtualId:</b> {loan.virtualId}</div>
                   <div><b>Purpose:</b> {loan.purpose}</div>
                   <div><b>Status:</b> {loan.status}</div>
                   <div><b>Created At:</b> {new Date(loan.createdAt).toLocaleString()}</div>

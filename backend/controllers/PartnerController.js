@@ -57,9 +57,8 @@ exports.viewLoanRequests = async (req, res) => {
   try {
     const partnerId = req.partner._id;
     // Find all loan requests associated with this partner's virtual IDs
-    const loanRequests = await LoanRequest.find({ virtualId: { $in: req.partner.virtualIds } })
-      .populate('userId', 'name email')
-      .populate('virtualId', 'virtualId');
+    const loanRequests = await LoanRequest.find({ 
+      partner_id: partnerId })
     res.json({ loanRequests });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -97,11 +96,12 @@ exports.loginPartner = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     // For demo, assume apiKey is the password hash (or add a passwordHash field in real app)
-    const isMatch = password === partner.apiKey ? true : false
+    const isMatch = await bcrypt.compare(password,partner.password)
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign({ partnerId: partner._id, email: partner.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.cookie('token', token, { httpOnly: true,secure : false, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.json({ token, partner: { id: partner._id, name: partner.name, email: partner.email } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

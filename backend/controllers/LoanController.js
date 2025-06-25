@@ -25,8 +25,8 @@ exports.userCreatesLoanRequest = async (req, res) => {
     await User.findByIdAndUpdate(userId, { $push: { virtualIds: newVirtualID._id } });
     // Create the loan request
     const loanRequest = new LoanRequest({
-      userId,
-      virtualId: newVirtualID._id,
+      partner_id : partnerId,
+      virtualId : newVirtualID._id,
       purpose,
       status: 'PENDING',
     });
