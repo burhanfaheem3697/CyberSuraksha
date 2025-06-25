@@ -8,13 +8,14 @@ const jwt = require('jsonwebtoken');
 // Register a new partner
 exports.registerPartner = async (req, res) => {
   try {
-    const { name, description, purpose, email, trustScore } = req.body;
+    const { name, description, purpose, email, trustScore,password} = req.body;
     const existingPartner = await Partner.findOne({ email });
     if (existingPartner) {
       return res.status(400).json({ message: 'Partner already exists' });
     }
     // Generate a random API key
     const apiKey = crypto.randomBytes(24).toString('hex');
+    const passwordHash = await bcrypt.hash(password, 10);
     const partner = new Partner({
       name,
       description,
@@ -22,6 +23,7 @@ exports.registerPartner = async (req, res) => {
       email,
       trustScore: trustScore || 0,
       apiKey,
+      password : passwordHash
     });
     await partner.save();
     res.status(201).json({ message: 'Partner registered successfully', apiKey });
@@ -95,7 +97,7 @@ exports.loginPartner = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     // For demo, assume apiKey is the password hash (or add a passwordHash field in real app)
-    const isMatch = await bcrypt.compare(password, partner.apiKey);
+    const isMatch = password === partner.apiKey ? true : false
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
