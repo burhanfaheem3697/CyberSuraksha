@@ -29,7 +29,9 @@ const UserDashboard = ({ user }) => {
     if (section === 'consents') {
       setConsentsLoading(true);
       setConsentsErr(null);
-      fetch('http://localhost:5000/user/consents')
+      fetch('http://localhost:5000/user/consents',{
+        credentials : 'include'
+      })
         .then(res => res.json())
         .then(data => {
           setConsents(data.consents || []);

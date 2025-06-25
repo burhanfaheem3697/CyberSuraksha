@@ -73,6 +73,7 @@ const PartnerDashboard = ({ partner }) => {
           dataFields: consentForm.dataFields.split(',').map(f => f.trim()),
           duration: Number(consentForm.duration),
         }),
+        credentials : 'include'
       });
       const data = await res.json();
       if (res.ok) {
