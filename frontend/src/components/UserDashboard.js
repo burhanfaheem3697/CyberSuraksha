@@ -30,6 +30,11 @@ const UserDashboard = ({ user }) => {
   const [insuranceMsg, setInsuranceMsg] = useState(null);
   const [insuranceErr, setInsuranceErr] = useState(null);
 
+  const [budgetingForm, setBudgetingForm] = useState({ categories: [{ name: '', plannedAmount: '' }], totalPlannedAmount: '', duration: '', purpose: '', partnerId: '', notes: '' });
+  const [budgetingLoading, setBudgetingLoading] = useState(false);
+  const [budgetingMsg, setBudgetingMsg] = useState(null);
+  const [budgetingErr, setBudgetingErr] = useState(null);
+
   useEffect(() => {
     if (section === 'consents') {
       setConsentsLoading(true);
@@ -128,7 +133,12 @@ const UserDashboard = ({ user }) => {
 
   // Revoke consent handler
   const handleRevokeConsent = async (consentId) => {
-    let revokeReason = window.prompt('Please provide a reason for revoking this consent (optional):', '');
+    let revokeReason = '';
+    while (!revokeReason) {
+      revokeReason = window.prompt('Please provide a reason for revoking this consent (required):', '');
+      if (revokeReason === null) return; // User cancelled
+      if (!revokeReason.trim()) revokeReason = '';
+    }
     try {
       const res = await fetch(`http://localhost:5000/consent/revoke/${consentId}`, {
         method: 'POST',
@@ -188,6 +198,58 @@ const UserDashboard = ({ user }) => {
       setInsuranceErr('Network error');
     }
     setInsuranceLoading(false);
+  };
+
+  const handleBudgetingChange = (e) => {
+    setBudgetingForm({ ...budgetingForm, [e.target.name]: e.target.value });
+  };
+
+  const handleCategoryChange = (idx, field, value) => {
+    const newCategories = budgetingForm.categories.map((cat, i) => i === idx ? { ...cat, [field]: value } : cat);
+    setBudgetingForm({ ...budgetingForm, categories: newCategories });
+  };
+
+  const handleAddCategory = () => {
+    setBudgetingForm({ ...budgetingForm, categories: [...budgetingForm.categories, { name: '', plannedAmount: '' }] });
+  };
+
+  const handleRemoveCategory = (idx) => {
+    setBudgetingForm({ ...budgetingForm, categories: budgetingForm.categories.filter((_, i) => i !== idx) });
+  };
+
+  const handleBudgetingSubmit = async (e) => {
+    e.preventDefault();
+    setBudgetingLoading(true);
+    setBudgetingMsg(null);
+    setBudgetingErr(null);
+    try {
+      const totalPlannedAmount = budgetingForm.categories.reduce((sum, cat) => sum + Number(cat.plannedAmount || 0), 0);
+      const fetchOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categories: budgetingForm.categories,
+          totalPlannedAmount,
+          duration: budgetingForm.duration,
+          purpose: budgetingForm.purpose,
+          partnerId: budgetingForm.partnerId,
+          notes: budgetingForm.notes,
+          userId: user?.id
+        }),
+        credentials: 'include'
+      };
+      const res = await fetch('http://localhost:5000/budgeting/budgeting-request', fetchOptions);
+      const data = await res.json();
+      if (res.ok) {
+        setBudgetingMsg('Budgeting request submitted successfully!');
+        setBudgetingForm({ categories: [{ name: '', plannedAmount: '' }], totalPlannedAmount: '', duration: '', purpose: '', partnerId: '', notes: '' });
+      } else {
+        setBudgetingErr(data.message || 'Failed to submit budgeting request');
+      }
+    } catch (err) {
+      setBudgetingErr('Network error');
+    }
+    setBudgetingLoading(false);
   };
 
   const renderSection = () => {
@@ -290,6 +352,83 @@ const UserDashboard = ({ user }) => {
             {insuranceErr && <div style={{ color: 'red', marginTop: 16 }}>{insuranceErr}</div>}
           </div>
         );
+      case 'budgeting':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>Budgeting</h3>
+            <form onSubmit={handleBudgetingSubmit} style={{ display: 'flex', flexDirection: 'column', width: 350, gap: 14 }}>
+              {budgetingForm.categories.map((cat, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    name={`category-name-${idx}`}
+                    placeholder="Category Name"
+                    value={cat.name}
+                    onChange={e => handleCategoryChange(idx, 'name', e.target.value)}
+                    required
+                    style={{ padding: 10, fontSize: 16, flex: 1 }}
+                  />
+                  <input
+                    name={`category-amount-${idx}`}
+                    type="number"
+                    placeholder="Planned Amount"
+                    value={cat.plannedAmount}
+                    onChange={e => handleCategoryChange(idx, 'plannedAmount', e.target.value)}
+                    required
+                    style={{ padding: 10, fontSize: 16, width: 120 }}
+                  />
+                  {budgetingForm.categories.length > 1 && (
+                    <button type="button" onClick={() => handleRemoveCategory(idx)} style={{ background: '#d32f2f', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px' }}>Remove</button>
+                  )}
+                </div>
+              ))}
+              <button type="button" onClick={handleAddCategory} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 0', marginBottom: 8 }}>Add Category</button>
+              <select
+                name="duration"
+                value={budgetingForm.duration}
+                onChange={handleBudgetingChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              >
+                <option value="">Select Duration</option>
+                <option value="monthly">Monthly</option>
+                <option value="weekly">Weekly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+              <input
+                name="purpose"
+                placeholder="Purpose"
+                value={budgetingForm.purpose}
+                onChange={handleBudgetingChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <select
+                name="partnerId"
+                value={budgetingForm.partnerId}
+                onChange={handleBudgetingChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              >
+                <option value="">Select a Partner</option>
+                {partners.map(p => (
+                  <option key={p._id} value={p._id}>{p.name}</option>
+                ))}
+              </select>
+              <textarea
+                name="notes"
+                placeholder="Notes (optional)"
+                value={budgetingForm.notes}
+                onChange={handleBudgetingChange}
+                style={{ padding: 10, fontSize: 16, minHeight: 60 }}
+              />
+              <button type="submit" disabled={budgetingLoading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
+                {budgetingLoading ? 'Submitting...' : 'Submit Budgeting Request'}
+              </button>
+            </form>
+            {budgetingMsg && <div style={{ color: 'green', marginTop: 16 }}>{budgetingMsg}</div>}
+            {budgetingErr && <div style={{ color: 'red', marginTop: 16 }}>{budgetingErr}</div>}
+          </div>
+        );
       case 'consents':
         return (
           <div style={{ marginTop: 32 }}>
@@ -341,6 +480,9 @@ const UserDashboard = ({ user }) => {
                   <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
                   <div><b>Partner:</b> {log.partnerId?.name || '-'}</div>
                   <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
+                  {log.action === 'CONSENT_REVOKED' && log.context?.revokeReason && (
+                    <div><b>Revoke Reason:</b> {log.context.revokeReason}</div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -357,6 +499,7 @@ const UserDashboard = ({ user }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
         <button onClick={() => setSection('loan')} style={{ padding: '16px 24px', fontSize: 16 }}>Apply for Loan</button>
         <button onClick={() => setSection('insurance')} style={{ padding: '16px 24px', fontSize: 16 }}>Apply for Insurance</button>
+        <button onClick={() => setSection('budgeting')} style={{ padding: '16px 24px', fontSize: 16 }}>Budgeting</button>
         <button onClick={() => setSection('consents')} style={{ padding: '16px 24px', fontSize: 16 }}>View Consent Requests</button>
         <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
       </div>

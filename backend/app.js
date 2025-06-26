@@ -14,6 +14,7 @@ const virtualIdRoutes = require('./routes/virtualid');
 const auditRoutes = require('./routes/audit');
 const loanRoutes = require('./routes/loan');
 const insuranceRoutes = require('./routes/insurance');
+const budgetingRoutes = require('./routes/budgeting');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/virtualid', virtualIdRoutes);
 app.use('/audit', auditRoutes);
 app.use('/loan', loanRoutes);
 app.use('/insurance', insuranceRoutes);
+app.use('/budgeting', budgetingRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
