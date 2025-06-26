@@ -3,6 +3,8 @@ const AuditLog = require('../models/AuditLog');
 const Bank = require('../models/Bank'); // Assume this model exists
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const UserBankData = require('../models/UserBankData');
+const VirtualID = require('../models/VirtualID');
 
 // View all pending consent requests (for the bank)
 exports.viewConsentRequests = async (req, res) => {
@@ -76,6 +78,42 @@ exports.registerBank = async (req, res) => {
     });
     await bank.save();
     res.status(201).json({ message: 'Bank registered successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Fetch approved user bank data for a given consent, filtered by consented fields
+exports.getApprovedUserBankData = async (req, res) => {
+  try {
+    const { consentId } = req.query;
+    if (!consentId) {
+      return res.status(400).json({ message: 'consentId is required' });
+    }
+    // Find the consent and ensure it's approved
+    const consent = await Consent.findById(consentId);
+    if (!consent || consent.status !== 'APPROVED') {
+      return res.status(404).json({ message: 'Approved consent not found' });
+    }
+    // Find the virtual_id string from the VirtualID model
+    const virtualIdDoc = await VirtualID.findById(consent.virtualUserId);
+    if (!virtualIdDoc) {
+      return res.status(404).json({ message: 'Virtual ID not found' });
+    }
+    const virtual_id = virtualIdDoc._id.toString(); // Use the ObjectId as the virtual_id string
+    // Fetch the user's bank data
+    const bankData = await UserBankData.findOne({ virtual_id });
+    if (!bankData) {
+      return res.status(404).json({ message: 'User bank data not found' });
+    }
+    // Only return the fields listed in consent.dataFields
+    const filteredData = {};
+    for (let field of consent.dataFields) {
+      if (bankData[field] !== undefined) {
+        filteredData[field] = bankData[field];
+      }
+    }
+    return res.json({ virtual_id, data: filteredData });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

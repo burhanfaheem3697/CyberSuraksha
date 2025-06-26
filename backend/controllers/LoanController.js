@@ -19,12 +19,15 @@ exports.userCreatesLoanRequest = async (req, res) => {
       purpose,
     });
     await newVirtualID.save();
+    if (!newVirtualID._id) {
+      return res.status(500).json({ message: 'Failed to create virtual ID' });
+    }
     // Attach to user
     await User.findByIdAndUpdate(userId, { $push: { virtualIds: newVirtualID._id } });
     // Create the loan request
     const loanRequest = new LoanRequest({
-      partner_id : partnerId,
-      virtualId : newVirtualID._id,
+      partner_id: partnerId,
+      virtualId: newVirtualID._id,
       purpose,
       status: 'PENDING',
     });

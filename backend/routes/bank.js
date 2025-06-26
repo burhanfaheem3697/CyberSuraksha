@@ -15,4 +15,7 @@ router.post('/upload-data',bankAuthMiddleware,BankController.sendBankDataToPartn
 // POST /bank/register
 router.post('/register',BankController.registerBank);
 
+// GET /bank/approved-user-bank-data?consentId=... (requires bank auth)
+router.get('/approved-user-bank-data', bankAuthMiddleware, BankController.getApprovedUserBankData);
+
 module.exports = router; 
