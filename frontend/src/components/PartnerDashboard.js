@@ -26,7 +26,7 @@ const PartnerDashboard = ({ partner }) => {
     if (section === 'loans') {
       setLoansLoading(true);
       setLoansErr(null);
-      fetch('http://localhost:5000/partner/loan-requests', {
+      fetch('http://localhost:5000/loan/view-loan-requests', {
         credentials: 'include'
       })
         .then(res => res.json())
@@ -42,7 +42,7 @@ const PartnerDashboard = ({ partner }) => {
     if (section === 'approved') {
       setApprovedLoading(true);
       setApprovedErr(null);
-      fetch('http://localhost:5000/partner/consents-approved')
+      fetch('http://localhost:5000/consent/consents-approved')
         .then(res => res.json())
         .then(data => {
           setApprovedConsents(data.consents || []);
@@ -65,7 +65,7 @@ const PartnerDashboard = ({ partner }) => {
     setConsentMsg(null);
     setConsentErr(null);
     try {
-      const res = await fetch('http://localhost:5000/partner/create-consent-request', {
+      const res = await fetch('http://localhost:5000/consent/create-consent-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

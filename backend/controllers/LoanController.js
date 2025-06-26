@@ -31,7 +31,31 @@ exports.userCreatesLoanRequest = async (req, res) => {
       status: 'PENDING',
     });
     await loanRequest.save();
+    // Log the creation
+    await AuditLog.create({
+      virtualUserId: newVirtualID._id,
+      partnerId: partnerId,
+      action: 'LOAN_REQUEST_CREATED',
+      purpose: purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { loanRequestId: loanRequest._id }
+    });
     res.status(201).json({ message: 'Loan request created', loanRequest });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// View all loan requests (for this partner)
+exports.viewLoanRequests = async (req, res) => {
+  try {
+    const partnerId = req.partner.partnerId;
+    // Find all loan requests associated with this partner's virtual IDs
+    const loanRequests = await LoanRequest.find({ 
+      partner_id: partnerId })
+    res.json({ loanRequests });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

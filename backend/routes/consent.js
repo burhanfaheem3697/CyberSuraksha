@@ -1,9 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const ConsentController = require('../controllers/ConsentController');
+const partnerAuthMiddleware = require('../middleware/partnerAuthMiddleware')
+const authMiddleware = require('../middleware/authMiddleware')
 
-// POST /consent/incoming
-router.post('/incoming', ConsentController.receiveConsentRequestFromPartner);
+//POST /consent/create-consent-request
+router.post('/create-consent-request',partnerAuthMiddleware,ConsentController.createConsentRequest);
+
+// GET /consent/consents-approved (requires partner auth)
+router.get('/consents-approved',partnerAuthMiddleware,ConsentController.viewApprovedConsents);
+
+// GET /consent/view-consents (requires auth middleware)
+router.get('/view-consents', authMiddleware, ConsentController.viewConsents);
 
 // POST /consent/approve/:id (requires user auth)
 // router.post('/approve/:id', authMiddleware, ConsentController.userApprovesConsent);

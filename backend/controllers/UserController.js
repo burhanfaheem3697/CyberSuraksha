@@ -51,19 +51,3 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// View user's consents
-exports.viewConsents = async (req, res) => {
-  try {
-    const userId = req.user.userId; // req.user is set by auth middleware
-    // Fetch the user's virtualIds from the User model
-    const user = await User.findById(userId).select('virtualIds');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    const consents = await Consent.find({ virtualUserId: { $in: user.virtualIds } })
-      .populate('partnerId', 'name email');
-    res.json({ consents });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-}; 

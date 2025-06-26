@@ -4,6 +4,7 @@ const LoanRequest = require('../models/LoanRequest');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const AuditLog = require('../models/AuditLog')
 
 // Register a new partner
 exports.registerPartner = async (req, res) => {
@@ -32,51 +33,11 @@ exports.registerPartner = async (req, res) => {
   }
 };
 
-// Create a consent request (partner initiates)
-exports.createConsentRequest = async (req, res) => {
-  try {
-    const { virtualUserId, purpose, dataFields, duration } = req.body;
-    const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
-    const consent = new Consent({
-      virtualUserId,
-      partnerId,
-      purpose,
-      dataFields,
-      duration,
-      status: 'PENDING',
-    });
-    await consent.save();
-    res.status(201).json({ message: 'Consent request created', consent });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
 
-// View all loan requests (for this partner)
-exports.viewLoanRequests = async (req, res) => {
-  try {
-    const partnerId = req.partner.partnerId;
-    // Find all loan requests associated with this partner's virtual IDs
-    const loanRequests = await LoanRequest.find({ 
-      partner_id: partnerId })
-    res.json({ loanRequests });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
 
-// View all approved consents for this partner
-exports.viewApprovedConsents = async (req, res) => {
-  try {
-    const partnerId = req.partner._id;
-    const consents = await Consent.find({ partnerId, status: 'APPROVED' })
-      .populate('virtualUserId', 'virtualId')
-      .populate('partnerId', 'name');
-    res.json({ consents });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
+
+
+
 
 // List all partners (for dropdowns, etc.)
 exports.listPartners = async (req, res) => {

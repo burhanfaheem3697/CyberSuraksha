@@ -29,7 +29,7 @@ const UserDashboard = ({ user }) => {
     if (section === 'consents') {
       setConsentsLoading(true);
       setConsentsErr(null);
-      fetch('http://localhost:5000/user/consents',{
+      fetch('http://localhost:5000/consent/view-consents',{
         credentials : 'include'
       })
         .then(res => res.json())
@@ -77,7 +77,7 @@ const UserDashboard = ({ user }) => {
         credentials: 'include'
       };
       console.log('Fetch options:', fetchOptions);
-      const res = await fetch('http://localhost:5000/user/loan-request', fetchOptions);
+      const res = await fetch('http://localhost:5000/loan/loan-request', fetchOptions);
       console.log('Fetch response:', res);
       const data = await res.json();
       console.log('Response data:', data);

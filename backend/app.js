@@ -12,6 +12,7 @@ const bankRoutes = require('./routes/bank');
 const consentRoutes = require('./routes/consent');
 const virtualIdRoutes = require('./routes/virtualid');
 const auditRoutes = require('./routes/audit');
+const loanRoutes = require('./routes/loan')
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/bank', bankRoutes);
 app.use('/consent', consentRoutes);
 app.use('/virtualid', virtualIdRoutes);
 app.use('/audit', auditRoutes);
+app.use('/loan',loanRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
