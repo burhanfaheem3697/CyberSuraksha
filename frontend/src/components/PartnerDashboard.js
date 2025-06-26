@@ -32,6 +32,11 @@ const PartnerDashboard = ({ partner }) => {
   const [insuranceLoading, setInsuranceLoading] = useState(false);
   const [insuranceErr, setInsuranceErr] = useState(null);
 
+  // Budget requests state
+  const [budgetRequests, setBudgetRequests] = useState([]);
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [budgetErr, setBudgetErr] = useState(null);
+
   useEffect(() => {
     if (section === 'loans') {
       setLoansLoading(true);
@@ -91,6 +96,22 @@ const PartnerDashboard = ({ partner }) => {
         .catch(() => {
           setInsuranceErr('Failed to fetch insurance requests');
           setInsuranceLoading(false);
+        });
+    }
+    if (section === 'budgeting') {
+      setBudgetLoading(true);
+      setBudgetErr(null);
+      fetch('http://localhost:5000/budgeting/view-budgeting-requests', {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => {
+          setBudgetRequests(data.budgetingRequests || []);
+          setBudgetLoading(false);
+        })
+        .catch(() => {
+          setBudgetErr('Failed to fetch budget requests');
+          setBudgetLoading(false);
         });
     }
   }, [section, partner]);
@@ -174,6 +195,32 @@ const PartnerDashboard = ({ partner }) => {
         }
       } else {
         alert(data.message || 'Failed to approve insurance request');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
+
+  // Approve budget handler
+  const handleApproveBudget = async (budgetingRequestId) => {
+    try {
+      const res = await fetch('http://localhost:5000/budgeting/approve-budgeting-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ budgetingRequestId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBudgetRequests((prev) => prev.map(b => b._id === budgetingRequestId ? { ...b, status: 'APPROVED' } : b));
+        // Optionally refresh logs
+        if (section === 'logs' && partner?.id) {
+          fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => setLogs(data.logs || []));
+        }
+      } else {
+        alert(data.message || 'Failed to approve budget request');
       }
     } catch (err) {
       alert('Network error');
@@ -305,6 +352,43 @@ const PartnerDashboard = ({ partner }) => {
             </ul>
           </div>
         );
+      case 'budgeting':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>View Budget Requests</h3>
+            {budgetLoading && <div>Loading...</div>}
+            {budgetErr && <div style={{ color: 'red' }}>{budgetErr}</div>}
+            {!budgetLoading && !budgetErr && budgetRequests.length === 0 && <div>No budget requests found.</div>}
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {budgetRequests.map((req) => (
+                <li key={req._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
+                  <div><b>Virtual ID:</b> {req.virtualId}</div>
+                  <div><b>Purpose:</b> {req.purpose}</div>
+                  <div><b>Duration:</b> {req.duration}</div>
+                  <div><b>Status:</b> {req.status}</div>
+                  <div><b>Created At:</b> {new Date(req.createdAt).toLocaleString()}</div>
+                  <div><b>Categories:</b>
+                    <ul style={{ margin: 0, paddingLeft: 16 }}>
+                      {req.categories.map((cat, idx) => (
+                        <li key={idx}>{cat.name}: {cat.plannedAmount}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div><b>Total Planned Amount:</b> {req.totalPlannedAmount}</div>
+                  {req.notes && <div><b>Notes:</b> {req.notes}</div>}
+                  {req.status !== 'APPROVED' && (
+                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleApproveBudget(req._id)}>
+                      Approve
+                    </button>
+                  )}
+                  {req.status === 'APPROVED' && (
+                    <span style={{ marginTop: 8, color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
       case 'logs':
         return (
           <div style={{ marginTop: 32 }}>
@@ -338,6 +422,7 @@ const PartnerDashboard = ({ partner }) => {
         <button onClick={() => setSection('consent')} style={{ padding: '16px 24px', fontSize: 16 }}>Generate Consent Request</button>
         <button onClick={() => setSection('loans')} style={{ padding: '16px 24px', fontSize: 16 }}>View Loan Requests</button>
         <button onClick={() => setSection('insurance')} style={{ padding: '16px 24px', fontSize: 16 }}>View Insurance Requests</button>
+        <button onClick={() => setSection('budgeting')} style={{ padding: '16px 24px', fontSize: 16 }}>View Budget Requests</button>
         <button onClick={() => setSection('approved')} style={{ padding: '16px 24px', fontSize: 16 }}>View Approved Consents</button>
         <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
       </div>
