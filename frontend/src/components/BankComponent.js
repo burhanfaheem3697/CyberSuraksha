@@ -12,11 +12,24 @@ const BankComponent = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Placeholder: handle login logic here
-    setBank({ name: form.email.split('@')[0], email: form.email });
-    setLoggedIn(true);
+    try {
+      const res = await fetch('http://localhost:5000/bank/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBank(data.bank);
+        setLoggedIn(true);
+      } else {
+        alert(data.message || 'Login failed');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
   };
 
   if (showRegister) {
