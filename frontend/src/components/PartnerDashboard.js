@@ -27,6 +27,11 @@ const PartnerDashboard = ({ partner }) => {
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsErr, setLogsErr] = useState(null);
 
+  // Insurance requests state
+  const [insuranceRequests, setInsuranceRequests] = useState([]);
+  const [insuranceLoading, setInsuranceLoading] = useState(false);
+  const [insuranceErr, setInsuranceErr] = useState(null);
+
   useEffect(() => {
     if (section === 'loans') {
       setLoansLoading(true);
@@ -70,6 +75,22 @@ const PartnerDashboard = ({ partner }) => {
         .catch(() => {
           setLogsErr('Failed to fetch logs');
           setLogsLoading(false);
+        });
+    }
+    if (section === 'insurance') {
+      setInsuranceLoading(true);
+      setInsuranceErr(null);
+      fetch('http://localhost:5000/insurance/view-insurance-requests', {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => {
+          setInsuranceRequests(data.insuranceRequests || []);
+          setInsuranceLoading(false);
+        })
+        .catch(() => {
+          setInsuranceErr('Failed to fetch insurance requests');
+          setInsuranceLoading(false);
         });
     }
   }, [section, partner]);
@@ -127,6 +148,32 @@ const PartnerDashboard = ({ partner }) => {
         }
       } else {
         alert(data.message || 'Failed to approve loan request');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
+
+  // Approve insurance handler
+  const handleApproveInsurance = async (insuranceRequestId) => {
+    try {
+      const res = await fetch('http://localhost:5000/insurance/approve-insurance-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ insuranceRequestId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInsuranceRequests((prev) => prev.map(i => i._id === insuranceRequestId ? { ...i, status: 'APPROVED' } : i));
+        // Optionally refresh logs
+        if (section === 'logs' && partner?.id) {
+          fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => setLogs(data.logs || []));
+        }
+      } else {
+        alert(data.message || 'Failed to approve insurance request');
       }
     } catch (err) {
       alert('Network error');
@@ -228,6 +275,36 @@ const PartnerDashboard = ({ partner }) => {
             </ul>
           </div>
         );
+      case 'insurance':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>View Insurance Requests</h3>
+            {insuranceLoading && <div>Loading...</div>}
+            {insuranceErr && <div style={{ color: 'red' }}>{insuranceErr}</div>}
+            {!insuranceLoading && !insuranceErr && insuranceRequests.length === 0 && <div>No insurance requests found.</div>}
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {insuranceRequests.map((req) => (
+                <li key={req._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
+                  <div><b>Virtual ID:</b> {req.virtualId}</div>
+                  <div><b>Insurance Type:</b> {req.insuranceType}</div>
+                  <div><b>Coverage Amount:</b> {req.coverageAmount}</div>
+                  <div><b>Tenure (years):</b> {req.tenureYears}</div>
+                  <div><b>Purpose:</b> {req.purpose}</div>
+                  <div><b>Status:</b> {req.status}</div>
+                  <div><b>Created At:</b> {new Date(req.createdAt).toLocaleString()}</div>
+                  {req.status !== 'APPROVED' && (
+                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleApproveInsurance(req._id)}>
+                      Approve
+                    </button>
+                  )}
+                  {req.status === 'APPROVED' && (
+                    <span style={{ marginTop: 8, color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
       case 'logs':
         return (
           <div style={{ marginTop: 32 }}>
@@ -260,6 +337,7 @@ const PartnerDashboard = ({ partner }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
         <button onClick={() => setSection('consent')} style={{ padding: '16px 24px', fontSize: 16 }}>Generate Consent Request</button>
         <button onClick={() => setSection('loans')} style={{ padding: '16px 24px', fontSize: 16 }}>View Loan Requests</button>
+        <button onClick={() => setSection('insurance')} style={{ padding: '16px 24px', fontSize: 16 }}>View Insurance Requests</button>
         <button onClick={() => setSection('approved')} style={{ padding: '16px 24px', fontSize: 16 }}>View Approved Consents</button>
         <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
       </div>

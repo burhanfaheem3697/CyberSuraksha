@@ -25,6 +25,11 @@ const UserDashboard = ({ user }) => {
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsErr, setLogsErr] = useState(null);
 
+  const [insuranceForm, setInsuranceForm] = useState({ insuranceType: '', coverageAmount: '', tenureYears: '', purpose: '', partnerId: '' });
+  const [insuranceLoading, setInsuranceLoading] = useState(false);
+  const [insuranceMsg, setInsuranceMsg] = useState(null);
+  const [insuranceErr, setInsuranceErr] = useState(null);
+
   useEffect(() => {
     if (section === 'consents') {
       setConsentsLoading(true);
@@ -148,6 +153,43 @@ const UserDashboard = ({ user }) => {
     }
   };
 
+  const handleInsuranceChange = (e) => {
+    setInsuranceForm({ ...insuranceForm, [e.target.name]: e.target.value });
+  };
+
+  const handleInsuranceSubmit = async (e) => {
+    e.preventDefault();
+    setInsuranceLoading(true);
+    setInsuranceMsg(null);
+    setInsuranceErr(null);
+    try {
+      const fetchOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          insuranceType: insuranceForm.insuranceType,
+          coverageAmount: Number(insuranceForm.coverageAmount),
+          tenureYears: Number(insuranceForm.tenureYears),
+          purpose: insuranceForm.purpose,
+          partnerId: insuranceForm.partnerId,
+          userId: user?.id
+        }),
+        credentials: 'include'
+      };
+      const res = await fetch('http://localhost:5000/insurance/insurance-request', fetchOptions);
+      const data = await res.json();
+      if (res.ok) {
+        setInsuranceMsg('Insurance request submitted successfully!');
+        setInsuranceForm({ insuranceType: '', coverageAmount: '', tenureYears: '', purpose: '', partnerId: '' });
+      } else {
+        setInsuranceErr(data.message || 'Failed to submit insurance request');
+      }
+    } catch (err) {
+      setInsuranceErr('Network error');
+    }
+    setInsuranceLoading(false);
+  };
+
   const renderSection = () => {
     switch (section) {
       case 'loan':
@@ -181,6 +223,71 @@ const UserDashboard = ({ user }) => {
             </form>
             {loanMsg && <div style={{ color: 'green', marginTop: 16 }}>{loanMsg}</div>}
             {loanErr && <div style={{ color: 'red', marginTop: 16 }}>{loanErr}</div>}
+          </div>
+        );
+      case 'insurance':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>Apply for Insurance</h3>
+            <form onSubmit={handleInsuranceSubmit} style={{ display: 'flex', flexDirection: 'column', width: 350, gap: 14 }}>
+              <select
+                name="insuranceType"
+                value={insuranceForm.insuranceType}
+                onChange={handleInsuranceChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              >
+                <option value="">Select Insurance Type</option>
+                <option value="HEALTH">Health</option>
+                <option value="LIFE">Life</option>
+                <option value="CAR">Car</option>
+                <option value="TRAVEL">Travel</option>
+                <option value="HOME">Home</option>
+              </select>
+              <input
+                name="coverageAmount"
+                type="number"
+                placeholder="Coverage Amount"
+                value={insuranceForm.coverageAmount}
+                onChange={handleInsuranceChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <input
+                name="tenureYears"
+                type="number"
+                placeholder="Tenure (years)"
+                value={insuranceForm.tenureYears}
+                onChange={handleInsuranceChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <input
+                name="purpose"
+                placeholder="Purpose"
+                value={insuranceForm.purpose}
+                onChange={handleInsuranceChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <select
+                name="partnerId"
+                value={insuranceForm.partnerId}
+                onChange={handleInsuranceChange}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              >
+                <option value="">Select a Partner</option>
+                {partners.map(p => (
+                  <option key={p._id} value={p._id}>{p.name}</option>
+                ))}
+              </select>
+              <button type="submit" disabled={insuranceLoading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
+                {insuranceLoading ? 'Submitting...' : 'Submit Insurance Request'}
+              </button>
+            </form>
+            {insuranceMsg && <div style={{ color: 'green', marginTop: 16 }}>{insuranceMsg}</div>}
+            {insuranceErr && <div style={{ color: 'red', marginTop: 16 }}>{insuranceErr}</div>}
           </div>
         );
       case 'consents':
@@ -249,6 +356,7 @@ const UserDashboard = ({ user }) => {
       <h2>Welcome, {user?.name || 'User'}!</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
         <button onClick={() => setSection('loan')} style={{ padding: '16px 24px', fontSize: 16 }}>Apply for Loan</button>
+        <button onClick={() => setSection('insurance')} style={{ padding: '16px 24px', fontSize: 16 }}>Apply for Insurance</button>
         <button onClick={() => setSection('consents')} style={{ padding: '16px 24px', fontSize: 16 }}>View Consent Requests</button>
         <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
       </div>
