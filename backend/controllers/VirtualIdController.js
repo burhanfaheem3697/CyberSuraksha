@@ -8,9 +8,7 @@ exports.issueVirtualIdForConsent = async (req, res) => {
   try {
     const { userId, partnerId, purpose, expiresAt } = req.body;
     // Generate a unique virtual ID
-    const virtualId = 'VID-' + crypto.randomBytes(6).toString('hex');
     const newVirtualID = new VirtualID({
-      virtualId,
       userId,
       partnerId,
       purpose,
@@ -28,7 +26,7 @@ exports.issueVirtualIdForConsent = async (req, res) => {
       scopes: [],
       timestamp: new Date(),
       status: 'SUCCESS',
-      context: { virtualId }
+      context: { virtualIdId: newVirtualID._id }
     });
     res.status(201).json({ message: 'Virtual ID issued', virtualId: newVirtualID });
   } catch (err) {

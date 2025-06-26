@@ -6,9 +6,11 @@ const ConsentSchema = new mongoose.Schema({
   purpose: { type: String, required: true },
   dataFields: [{ type: String, required: true }],
   duration: { type: Number }, // in days or as per business logic
-  status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED'], default: 'PENDING' },
+  status: { type: String, enum: ['PENDING', 'APPROVED', 'REJECTED', 'REVOKED'], default: 'PENDING' },
   approvedAt: { type: Date },
-  expiresAt: { type: Date }
+  expiresAt: { type: Date },
+  revokedAt: { type: Date },
+  revokeReason: { type: String }
 });
 
 module.exports = mongoose.model('Consent', ConsentSchema);

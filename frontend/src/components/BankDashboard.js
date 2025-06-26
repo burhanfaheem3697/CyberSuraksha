@@ -88,7 +88,7 @@ const BankDashboard = ({ bank }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {pendingConsents.map((consent) => (
                 <li key={consent._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
-                  <div><b>Virtual User ID:</b> {consent.virtualUserId?.virtualId || consent.virtualUserId}</div>
+                  <div><b>Virtual User ID:</b> {consent.virtualUserId}</div>
                   <div><b>Partner:</b> {consent.partnerId?.name || consent.partnerId}</div>
                   <div><b>Purpose:</b> {consent.purpose}</div>
                   <div><b>Status:</b> {consent.status}</div>

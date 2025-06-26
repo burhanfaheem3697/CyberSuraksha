@@ -13,9 +13,7 @@ exports.userCreatesLoanRequest = async (req, res) => {
       return res.status(400).json({ message: 'partnerId is required to create a loan request.' });
     }
     // Create a new VirtualID for this user and partner
-    const virtualIdString = 'VID-' + crypto.randomBytes(6).toString('hex');
     const newVirtualID = new VirtualID({
-      virtualId: virtualIdString,
       userId,
       partnerId,
       purpose,
@@ -64,7 +62,7 @@ exports.viewLoanRequests = async (req, res) => {
 // Partner reviews a loan request (placeholder for review logic)
 exports.partnerReviewsLoanRequest = async (req, res) => {
   try {
-    const { loanRequestId, status } = req.body; // status: UNDER_REVIEW or COMPLETED
+    const { loanRequestId, status } = req.body; // status: UNDER_REVIEW or APPROVED
     const loanRequest = await LoanRequest.findById(loanRequestId);
     if (!loanRequest) {
       return res.status(404).json({ message: 'Loan request not found' });
@@ -93,6 +91,34 @@ exports.statusUpdater = async (req, res) => {
   try {
     // Placeholder: In real app, update statuses based on business logic
     res.json({ message: 'Status updater executed (placeholder)' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Partner approves a loan request
+exports.partnerApproveLoanRequest = async (req, res) => {
+  try {
+    const { loanRequestId } = req.body;
+    const partnerId = req.partner.partnerId
+    const loanRequest = await LoanRequest.findById(loanRequestId);
+    if (!loanRequest) {
+      return res.status(404).json({ message: 'Loan request not found' });
+    }
+    loanRequest.status = 'APPROVED';
+    await loanRequest.save();
+    // Log the approval
+    await AuditLog.create({
+      virtualUserId: loanRequest.virtualId,
+      partnerId,
+      action: 'LOAN_REQUEST_APPROVED',
+      purpose: loanRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { loanRequestId, newStatus: 'APPROVED' }
+    });
+    res.json({ message: 'Loan request approved', loanRequest });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

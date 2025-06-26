@@ -14,7 +14,10 @@ router.get('/consents-approved',partnerAuthMiddleware,ConsentController.viewAppr
 router.get('/view-consents', authMiddleware, ConsentController.viewConsents);
 
 // POST /consent/approve/:id (requires user auth)
-// router.post('/approve/:id', authMiddleware, ConsentController.userApprovesConsent);
+router.post('/approve/:id', authMiddleware, ConsentController.userApprovesConsent);
+
+// POST /consent/revoke/:id (requires user auth)
+router.post('/revoke/:id', authMiddleware, ConsentController.revokeConsent);
 
 // GET /consent/user/:id (requires user auth)
 // router.get('/user/:id', authMiddleware, ...);

@@ -2,7 +2,6 @@ const User = require('../models/User');
 const Consent = require('../models/Consent');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const LoanRequest = require('../models/LoanRequest')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
@@ -35,7 +34,6 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    await LoanRequest.deleteMany()
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }

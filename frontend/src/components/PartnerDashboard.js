@@ -22,6 +22,11 @@ const PartnerDashboard = ({ partner }) => {
   const [approvedLoading, setApprovedLoading] = useState(false);
   const [approvedErr, setApprovedErr] = useState(null);
 
+  // Logs state
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsErr, setLogsErr] = useState(null);
+
   useEffect(() => {
     if (section === 'loans') {
       setLoansLoading(true);
@@ -42,7 +47,7 @@ const PartnerDashboard = ({ partner }) => {
     if (section === 'approved') {
       setApprovedLoading(true);
       setApprovedErr(null);
-      fetch('http://localhost:5000/consent/consents-approved')
+      fetch('http://localhost:5000/consent/consents-approved',{credentials : 'include'})
         .then(res => res.json())
         .then(data => {
           setApprovedConsents(data.consents || []);
@@ -53,7 +58,21 @@ const PartnerDashboard = ({ partner }) => {
           setApprovedLoading(false);
         });
     }
-  }, [section]);
+    if (section === 'logs' && partner?.id) {
+      setLogsLoading(true);
+      setLogsErr(null);
+      fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setLogs(data.logs || []);
+          setLogsLoading(false);
+        })
+        .catch(() => {
+          setLogsErr('Failed to fetch logs');
+          setLogsLoading(false);
+        });
+    }
+  }, [section, partner]);
 
   const handleConsentChange = (e) => {
     setConsentForm({ ...consentForm, [e.target.name]: e.target.value });
@@ -86,6 +105,32 @@ const PartnerDashboard = ({ partner }) => {
       setConsentErr('Network error');
     }
     setConsentLoading(false);
+  };
+
+  // Approve loan handler
+  const handleApproveLoan = async (loanRequestId) => {
+    try {
+      const res = await fetch('http://localhost:5000/loan/approve-loan-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ loanRequestId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLoans((prev) => prev.map(l => l._id === loanRequestId ? { ...l, status: 'APPROVED' } : l));
+        // Optionally refresh logs
+        if (section === 'logs' && partner?.id) {
+          fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => setLogs(data.logs || []));
+        }
+      } else {
+        alert(data.message || 'Failed to approve loan request');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
   };
 
   const renderSection = () => {
@@ -146,10 +191,18 @@ const PartnerDashboard = ({ partner }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {loans.map((loan) => (
                 <li key={loan._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
-                  <div><b>VirtualId:</b> {loan.virtualId}</div>
+                  <div><b>Virtual ID:</b> {loan.virtualId}</div>
                   <div><b>Purpose:</b> {loan.purpose}</div>
                   <div><b>Status:</b> {loan.status}</div>
                   <div><b>Created At:</b> {new Date(loan.createdAt).toLocaleString()}</div>
+                  {loan.status !== 'APPROVED' && (
+                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleApproveLoan(loan._id)}>
+                      Approve
+                    </button>
+                  )}
+                  {loan.status === 'APPROVED' && (
+                    <span style={{ marginTop: 8, color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -165,11 +218,31 @@ const PartnerDashboard = ({ partner }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {approvedConsents.map((consent) => (
                 <li key={consent._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
-                  <div><b>Virtual User ID:</b> {consent.virtualUserId?.virtualId || consent.virtualUserId}</div>
+                  <div><b>Virtual User ID:</b> {consent.virtualUserId}</div>
                   <div><b>Purpose:</b> {consent.purpose}</div>
                   <div><b>Fields:</b> {consent.dataFields?.join(', ')}</div>
                   <div><b>Status:</b> {consent.status}</div>
                   <div><b>Approved At:</b> {consent.approvedAt ? new Date(consent.approvedAt).toLocaleString() : '-'}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      case 'logs':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>View Logs</h3>
+            {logsLoading && <div>Loading...</div>}
+            {logsErr && <div style={{ color: 'red' }}>{logsErr}</div>}
+            {!logsLoading && !logsErr && logs.length === 0 && <div>No logs found.</div>}
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {logs.map((log) => (
+                <li key={log._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
+                  <div><b>Action:</b> {log.action}</div>
+                  <div><b>Purpose:</b> {log.purpose}</div>
+                  <div><b>Status:</b> {log.status}</div>
+                  <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
+                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
                 </li>
               ))}
             </ul>
@@ -188,6 +261,7 @@ const PartnerDashboard = ({ partner }) => {
         <button onClick={() => setSection('consent')} style={{ padding: '16px 24px', fontSize: 16 }}>Generate Consent Request</button>
         <button onClick={() => setSection('loans')} style={{ padding: '16px 24px', fontSize: 16 }}>View Loan Requests</button>
         <button onClick={() => setSection('approved')} style={{ padding: '16px 24px', fontSize: 16 }}>View Approved Consents</button>
+        <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
       </div>
       {renderSection()}
     </div>
