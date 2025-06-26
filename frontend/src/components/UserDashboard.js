@@ -29,7 +29,7 @@ const UserDashboard = ({ user }) => {
     if (section === 'consents') {
       setConsentsLoading(true);
       setConsentsErr(null);
-      fetch('http://localhost:5000/user/consents',{
+      fetch('http://localhost:5000/consent/view-consents',{
         credentials : 'include'
       })
         .then(res => res.json())
@@ -45,7 +45,7 @@ const UserDashboard = ({ user }) => {
     if (section === 'logs' && user?.id) {
       setLogsLoading(true);
       setLogsErr(null);
-      fetch(`http://localhost:5000/audit/user/${user.id}`)
+      fetch(`http://localhost:5000/audit/user`,{credentials : 'include'})
         .then(res => res.json())
         .then(data => {
           setLogs(data.logs || []);
@@ -77,7 +77,7 @@ const UserDashboard = ({ user }) => {
         credentials: 'include'
       };
       console.log('Fetch options:', fetchOptions);
-      const res = await fetch('http://localhost:5000/user/loan-request', fetchOptions);
+      const res = await fetch('http://localhost:5000/loan/loan-request', fetchOptions);
       console.log('Fetch response:', res);
       const data = await res.json();
       console.log('Response data:', data);
@@ -95,6 +95,57 @@ const UserDashboard = ({ user }) => {
     }
     setLoanLoading(false);
     console.log('Loan loading set to false');
+  };
+
+  // Approve consent handler
+  const handleApproveConsent = async (consentId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/consent/approve/${consentId}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, status: 'APPROVED' } : c));
+        // Optionally refresh logs
+        if (section === 'logs' && user?.id) {
+          fetch(`http://localhost:5000/audit/user`,{credentials : 'include'})
+            .then(res => res.json())
+            .then(data => setLogs(data.logs || []));
+        }
+      } else {
+        alert(data.message || 'Failed to approve consent');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+  };
+
+  // Revoke consent handler
+  const handleRevokeConsent = async (consentId) => {
+    let revokeReason = window.prompt('Please provide a reason for revoking this consent (optional):', '');
+    try {
+      const res = await fetch(`http://localhost:5000/consent/revoke/${consentId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ revokeReason }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, status: 'REVOKED', revokeReason } : c));
+        // Optionally refresh logs
+        if (section === 'logs' && user?.id) {
+          fetch(`http://localhost:5000/audit/user`,{credentials : 'include'})
+            .then(res => res.json())
+            .then(data => setLogs(data.logs || []));
+        }
+      } else {
+        alert(data.message || 'Failed to revoke consent');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
   };
 
   const renderSection = () => {
@@ -145,8 +196,20 @@ const UserDashboard = ({ user }) => {
                   <div><b>Purpose:</b> {c.purpose}</div>
                   <div><b>Partner:</b> {c.partnerId?.name || c.partnerId}</div>
                   <div><b>Status:</b> {c.status}</div>
+                  <div><b>Required Data Fields:</b> {Array.isArray(c.dataFields) ? c.dataFields.join(', ') : '-'}</div>
+                  <div><b>Duration:</b> {c.duration} days</div>
                   {c.status === 'PENDING' && (
-                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }}>
+                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleApproveConsent(c._id)}>
+                      Approve
+                    </button>
+                  )}
+                  {c.status === 'APPROVED' && (
+                    <button style={{ marginTop: 8, background: '#d32f2f', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleRevokeConsent(c._id)}>
+                      Revoke
+                    </button>
+                  )}
+                  {c.status === 'REVOKED' && (
+                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleApproveConsent(c._id)}>
                       Approve
                     </button>
                   )}
@@ -169,6 +232,8 @@ const UserDashboard = ({ user }) => {
                   <div><b>Purpose:</b> {log.purpose}</div>
                   <div><b>Status:</b> {log.status}</div>
                   <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
+                  <div><b>Partner:</b> {log.partnerId?.name || '-'}</div>
+                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
                 </li>
               ))}
             </ul>

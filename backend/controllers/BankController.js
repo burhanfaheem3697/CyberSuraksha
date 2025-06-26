@@ -9,7 +9,7 @@ exports.viewConsentRequests = async (req, res) => {
   try {
     // In a real app, filter by bank's scope/permissions
     const consents = await Consent.find({ status: 'PENDING' })
-      .populate('virtualUserId', 'virtualId')
+      .populate('virtualUserId')
       .populate('partnerId', 'name');
     res.json({ consents });
   } catch (err) {

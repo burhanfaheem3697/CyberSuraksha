@@ -1,11 +1,12 @@
 const Consent = require('../models/Consent');
 const PolicyRule = require('../models/PolicyRule');
 const AuditLog = require('../models/AuditLog');
-
+const User = require('../models/User')
 // Partner submits a consent request
-exports.receiveConsentRequestFromPartner = async (req, res) => {
+exports.createConsentRequest = async (req, res) => {
   try {
-    const { virtualUserId, partnerId, purpose, dataFields, duration } = req.body;
+    const { virtualUserId, purpose, dataFields, duration } = req.body;
+    const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
     const consent = new Consent({
       virtualUserId,
       partnerId,
@@ -15,11 +16,51 @@ exports.receiveConsentRequestFromPartner = async (req, res) => {
       status: 'PENDING',
     });
     await consent.save();
-    res.status(201).json({ message: 'Consent request received', consent });
+    // Log the creation
+    await AuditLog.create({
+      virtualUserId: virtualUserId,
+      partnerId: partnerId,
+      action: 'CONSENT_CREATED',
+      purpose: purpose,
+      scopes: dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
+    res.status(201).json({ message: 'Consent request created', consent });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// View all approved consents for this partner
+exports.viewApprovedConsents = async (req, res) => {
+  try {
+    const partnerId = req.partner.partnerId;
+    const consents = await Consent.find({ partnerId, status: 'APPROVED' })
+      .populate('partnerId', 'name');
+    res.json({ consents });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// View user's consents
+exports.viewConsents = async (req, res) => {
+  try {
+    const userId = req.user.userId; // req.user is set by auth middleware
+    // Fetch the user's virtualIds from the User model
+    const user = await User.findById(userId).select('virtualIds');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const consents = await Consent.find({ virtualUserId: { $in: user.virtualIds } })
+      .populate('partnerId', 'name email');
+    res.json({ consents });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+}; 
 
 // Validate consent request against policy rules
 exports.validateWithPolicyLayer = async (req, res) => {
@@ -98,6 +139,36 @@ exports.sendConsentToBank = async (req, res) => {
   try {
     // Placeholder: In real app, send consent info to bank system
     res.json({ message: 'Consent sent to bank (placeholder)' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// User revokes consent
+exports.revokeConsent = async (req, res) => {
+  try {
+    const consentId = req.params.id;
+    const { revokeReason } = req.body;
+    const consent = await Consent.findById(consentId);
+    if (!consent) {
+      return res.status(404).json({ message: 'Consent not found' });
+    }
+    consent.status = 'REVOKED';
+    consent.revokedAt = new Date();
+    if (revokeReason) consent.revokeReason = revokeReason;
+    await consent.save();
+    // Log the revocation
+    await AuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      partnerId: consent.partnerId,
+      action: 'CONSENT_REVOKED',
+      purpose: consent.purpose,
+      scopes: consent.dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id, revokeReason },
+    });
+    res.json({ message: 'Consent revoked', consent });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
