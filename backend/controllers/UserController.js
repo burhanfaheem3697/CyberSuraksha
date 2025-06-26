@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Consent = require('../models/Consent');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const UserBankData = require('../models/UserBankData');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
@@ -23,6 +24,18 @@ exports.registerUser = async (req, res) => {
       dataResidency,
     });
     await user.save();
+
+    // Create dummy UserBankData entry for this user (using user._id as virtual_id for now)
+    const dummyBankData = new UserBankData({
+      virtual_id: user._id.toString(),
+      income: 50000 + Math.floor(Math.random() * 50000),
+      credit_score: 700 + Math.floor(Math.random() * 100),
+      txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
+      employer: 'DummyCorp',
+      last_updated: new Date()
+    });
+    await dummyBankData.save();
+
     res.status(201).json({ message: 'User registered successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
