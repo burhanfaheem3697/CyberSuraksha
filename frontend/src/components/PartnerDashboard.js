@@ -263,14 +263,18 @@ const PartnerDashboard = ({ partner }) => {
                 required
                 style={{ padding: 10, fontSize: 16 }}
               />
-              <input
+              <select
                 name="purpose"
-                placeholder="Purpose"
                 value={consentForm.purpose}
                 onChange={handleConsentChange}
                 required
                 style={{ padding: 10, fontSize: 16 }}
-              />
+              >
+                <option value="">Select Purpose</option>
+                <option value="loan">loan</option>
+                <option value="insurance">insurance</option>
+                <option value="budgeting">budgeting</option>
+              </select>
               <input
                 name="dataFields"
                 placeholder="Data Fields (comma separated)"

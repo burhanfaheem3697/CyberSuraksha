@@ -3,11 +3,52 @@ const PolicyRule = require('../models/PolicyRule');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User')
 const BankAuditLog = require('../models/BankAuditLog');
+const Partner = require('../models/Partner');
+const { evaluateConsentRequest } = require('../../aiService/decisionEngine');
+
 // Partner submits a consent request
 exports.createConsentRequest = async (req, res) => {
   try {
     const { virtualUserId, purpose, dataFields, duration } = req.body;
     const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
+    // Fetch partner info for AI validation
+    const partner = await Partner.findById(partnerId);
+    if (!partner) {
+      return res.status(400).json({ message: 'Invalid partner ID' });
+    }
+    // Prepare AI validation input
+    const aiRequest = {
+      partnerId: partnerId,
+      partnerName: partner.name,
+      partnerTrustScore: partner.trustScore,
+      purpose,
+      fieldsRequested: dataFields,
+      requestedDurationDays: duration,
+      timestamp: Date.now(),
+    };
+    // Run AI validation
+    const aiResult = await evaluateConsentRequest(aiRequest);
+
+    console.log(aiResult);
+    if (!aiResult.approved) {
+      await AuditLog.create({
+        virtualUserId: virtualUserId,
+        partnerId: partnerId,
+        action: 'CONSENT_REJECTED',
+        purpose: purpose,
+        scopes: dataFields,
+        timestamp: new Date(),
+        status: 'REJECTED',
+        context: { source: aiResult.source, reason: aiResult.reason }
+      });
+
+      return res.status(403).json({
+        status: "REJECTED",
+        source: aiResult.source,
+        reason: aiResult.reason
+      });
+    }
+    // If approved, save consent
     const consent = new Consent({
       virtualUserId,
       partnerId,
