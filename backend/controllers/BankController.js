@@ -6,40 +6,7 @@ const jwt = require('jsonwebtoken');
 const UserBankData = require('../models/UserBankData');
 const VirtualID = require('../models/VirtualID');
 
-// View all pending consent requests (for the bank)
-exports.viewConsentRequests = async (req, res) => {
-  try {
-    // In a real app, filter by bank's scope/permissions
-    const consents = await Consent.find({ status: 'PENDING' })
-      .populate('virtualUserId')
-      .populate('partnerId', 'name');
-    res.json({ consents });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
 
-// Bank uploads data to partner (placeholder)
-exports.sendBankDataToPartner = async (req, res) => {
-  try {
-    const { consentId, data } = req.body;
-    // In a real app, validate consent, check expiry, and securely transmit data
-    // Log the data transfer
-    await AuditLog.create({
-      virtualUserId: req.body.virtualUserId,
-      partnerId: req.body.partnerId,
-      action: 'BANK_DATA_SENT',
-      purpose: req.body.purpose,
-      scopes: req.body.scopes,
-      timestamp: new Date(),
-      status: 'SUCCESS',
-      context: { consentId, dataSummary: data ? Object.keys(data) : [] }
-    });
-    res.json({ message: 'Bank data sent to partner (placeholder)' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
 
 // Bank login
 exports.loginBank = async (req, res) => {
@@ -54,6 +21,13 @@ exports.loginBank = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign({ bankId: bank._id, email: bank.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.cookie('bankToken', token, { 
+      httpOnly: true, 
+      secure: false, 
+      sameSite: 'lax', 
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/'
+    });
     res.json({ token, bank: { id: bank._id, name: bank.name, email: bank.email } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -83,38 +57,5 @@ exports.registerBank = async (req, res) => {
   }
 };
 
-// Fetch approved user bank data for a given consent, filtered by consented fields
-exports.getApprovedUserBankData = async (req, res) => {
-  try {
-    const { consentId } = req.query;
-    if (!consentId) {
-      return res.status(400).json({ message: 'consentId is required' });
-    }
-    // Find the consent and ensure it's approved
-    const consent = await Consent.findById(consentId);
-    if (!consent || consent.status !== 'APPROVED') {
-      return res.status(404).json({ message: 'Approved consent not found' });
-    }
-    // Find the virtual_id string from the VirtualID model
-    const virtualIdDoc = await VirtualID.findById(consent.virtualUserId);
-    if (!virtualIdDoc) {
-      return res.status(404).json({ message: 'Virtual ID not found' });
-    }
-    const virtual_id = virtualIdDoc._id.toString(); // Use the ObjectId as the virtual_id string
-    // Fetch the user's bank data
-    const bankData = await UserBankData.findOne({ virtual_id });
-    if (!bankData) {
-      return res.status(404).json({ message: 'User bank data not found' });
-    }
-    // Only return the fields listed in consent.dataFields
-    const filteredData = {};
-    for (let field of consent.dataFields) {
-      if (bankData[field] !== undefined) {
-        filteredData[field] = bankData[field];
-      }
-    }
-    return res.json({ virtual_id, data: filteredData });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-}; 
+
+

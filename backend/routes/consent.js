@@ -3,6 +3,7 @@ const router = express.Router();
 const ConsentController = require('../controllers/ConsentController');
 const partnerAuthMiddleware = require('../middleware/partnerAuthMiddleware')
 const authMiddleware = require('../middleware/authMiddleware')
+const bankAuthMiddleware = require('../middleware/bankAuthMiddleware')
 
 //POST /consent/create-consent-request
 router.post('/create-consent-request',partnerAuthMiddleware,ConsentController.createConsentRequest);
@@ -24,5 +25,8 @@ router.post('/revoke/:id', authMiddleware, ConsentController.revokeConsent);
 
 // GET /consent/partner/:id (requires partner auth)
 // router.get('/partner/:id', partnerAuth, ...);
+
+// GET /consent/approved-for-bank (for bank to see all approved consents)
+router.get('/approved-for-bank',bankAuthMiddleware, ConsentController.viewAllApprovedConsentsForBank);
 
 module.exports = router; 

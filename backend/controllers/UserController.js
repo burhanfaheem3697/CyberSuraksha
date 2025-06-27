@@ -20,14 +20,14 @@ exports.registerUser = async (req, res) => {
       email,
       passwordHash,
       phone,
-      aadhaar,
+      aadhaar, 
       dataResidency,
     });
     await user.save();
 
     // Create dummy UserBankData entry for this user (using user._id as virtual_id for now)
     const dummyBankData = new UserBankData({
-      virtual_id: user._id.toString(),
+      user_id : user._id,
       income: 50000 + Math.floor(Math.random() * 50000),
       credit_score: 700 + Math.floor(Math.random() * 100),
       txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
@@ -55,7 +55,7 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, { httpOnly: true,secure : false, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('userToken', token, { httpOnly: true,secure : false, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.json({ user: { id: user._id, name: user.name, email: user.email } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

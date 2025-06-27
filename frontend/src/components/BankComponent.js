@@ -18,6 +18,7 @@ const BankComponent = () => {
       const res = await fetch('http://localhost:5000/bank/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(form),
       });
       const data = await res.json();

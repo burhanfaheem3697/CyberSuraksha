@@ -62,7 +62,7 @@ exports.loginPartner = async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     const token = jwt.sign({ partnerId: partner._id, email: partner.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.cookie('token', token, { httpOnly: true,secure : false, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('partnerToken', token, { httpOnly: true,secure : false, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.json({ token, partner: { id: partner._id, name: partner.name, email: partner.email } });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

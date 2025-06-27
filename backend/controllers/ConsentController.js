@@ -2,6 +2,7 @@ const Consent = require('../models/Consent');
 const PolicyRule = require('../models/PolicyRule');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User')
+const BankAuditLog = require('../models/BankAuditLog');
 // Partner submits a consent request
 exports.createConsentRequest = async (req, res) => {
   try {
@@ -20,6 +21,17 @@ exports.createConsentRequest = async (req, res) => {
     await AuditLog.create({
       virtualUserId: virtualUserId,
       partnerId: partnerId,
+      action: 'CONSENT_CREATED',
+      purpose: purpose,
+      scopes: dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
+    // Log to BankAuditLog as well
+    await BankAuditLog.create({
+      virtualUserId: virtualUserId,
+      partnerId,
       action: 'CONSENT_CREATED',
       purpose: purpose,
       scopes: dataFields,
@@ -128,6 +140,17 @@ exports.userApprovesConsent = async (req, res) => {
       status: 'SUCCESS',
       context: { consentId: consent._id }
     });
+    // Log to BankAuditLog as well
+    await BankAuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      partnerId: consent.partnerId,
+      action: 'CONSENT_APPROVED',
+      purpose: consent.purpose,
+      scopes: consent.dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
     res.json({ message: 'Consent approved', consent });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -168,7 +191,28 @@ exports.revokeConsent = async (req, res) => {
       status: 'SUCCESS',
       context: { consentId: consent._id, revokeReason },
     });
+    // Log to BankAuditLog as well
+    await BankAuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      partnerId: consent.partnerId,
+      action: 'CONSENT_REVOKED',
+      purpose: consent.purpose,
+      scopes: consent.dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id, revokeReason },
+    });
     res.json({ message: 'Consent revoked', consent });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// View all approved consents (for bank to see what data to send)
+exports.viewAllApprovedConsentsForBank = async (req, res) => {
+  try {
+    const consents = await Consent.find({ status: 'APPROVED' });
+    res.json({ consents });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

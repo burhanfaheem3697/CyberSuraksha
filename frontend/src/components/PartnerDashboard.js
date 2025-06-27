@@ -37,6 +37,11 @@ const PartnerDashboard = ({ partner }) => {
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [budgetErr, setBudgetErr] = useState(null);
 
+  // Partner contracts state
+  const [partnerContracts, setPartnerContracts] = useState([]);
+  const [partnerContractsLoading, setPartnerContractsLoading] = useState(false);
+  const [partnerContractsErr, setPartnerContractsErr] = useState(null);
+
   useEffect(() => {
     if (section === 'loans') {
       setLoansLoading(true);
@@ -112,6 +117,22 @@ const PartnerDashboard = ({ partner }) => {
         .catch(() => {
           setBudgetErr('Failed to fetch budget requests');
           setBudgetLoading(false);
+        });
+    }
+    if (section === 'partnerContracts') {
+      setPartnerContractsLoading(true);
+      setPartnerContractsErr(null);
+      fetch('http://localhost:5000/contract/partner', {
+        credentials: 'include',
+      })
+        .then(res => res.json())
+        .then(data => {
+          setPartnerContracts(data.contracts || []);
+          setPartnerContractsLoading(false);
+        })
+        .catch(() => {
+          setPartnerContractsErr('Failed to fetch contracts');
+          setPartnerContractsLoading(false);
         });
     }
   }, [section, partner]);
@@ -399,11 +420,35 @@ const PartnerDashboard = ({ partner }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {logs.map((log) => (
                 <li key={log._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
+                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
                   <div><b>Action:</b> {log.action}</div>
                   <div><b>Purpose:</b> {log.purpose}</div>
                   <div><b>Status:</b> {log.status}</div>
                   <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
-                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      case 'partnerContracts':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>My Contracts</h3>
+            {partnerContractsLoading && <div>Loading...</div>}
+            {partnerContractsErr && <div style={{ color: 'red' }}>{partnerContractsErr}</div>}
+            {!partnerContractsLoading && !partnerContractsErr && partnerContracts.length === 0 && <div>No contracts found.</div>}
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {partnerContracts.map((contract) => (
+                <li key={contract._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
+                  <div><b>Contract ID:</b> {contract._id}</div>
+                  <div><b>Bank:</b> {typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id || JSON.stringify(contract.bankId) : contract.bankId}</div>
+                  <div><b>Virtual User ID:</b> {typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id || JSON.stringify(contract.virtualUserId) : contract.virtualUserId}</div>
+                  <div><b>Purpose:</b> {contract.purpose}</div>
+                  <div><b>Status:</b> {contract.status}</div>
+                  <div><b>Allowed Fields:</b> {contract.allowedFields && contract.allowedFields.join(', ')}</div>
+                  <div><b>Created At:</b> {new Date(contract.createdAt).toLocaleString()}</div>
+                  <div><b>Documents:</b> <pre style={{ margin: 0 }}>{JSON.stringify(contract.documents, null, 2)}</pre></div>
+                  {contract.data && <div><b>Data:</b> <pre style={{ margin: 0 }}>{JSON.stringify(contract.data, null, 2)}</pre></div>}
                 </li>
               ))}
             </ul>
@@ -425,6 +470,7 @@ const PartnerDashboard = ({ partner }) => {
         <button onClick={() => setSection('budgeting')} style={{ padding: '16px 24px', fontSize: 16 }}>View Budget Requests</button>
         <button onClick={() => setSection('approved')} style={{ padding: '16px 24px', fontSize: 16 }}>View Approved Consents</button>
         <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
+        <button onClick={() => setSection('partnerContracts')} style={{ padding: '16px 24px', fontSize: 16 }}>View My Contracts</button>
       </div>
       {renderSection()}
     </div>
