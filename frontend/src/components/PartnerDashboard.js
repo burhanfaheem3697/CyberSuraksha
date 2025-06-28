@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import './UserDashboard.css';
 
-const PartnerDashboard = ({ partner }) => {
+const PartnerDashboard = () => {
+  const [partner, setPartner] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [section, setSection] = useState('home');
   const [consentForm, setConsentForm] = useState({
     virtualUserId: '',
@@ -46,6 +50,36 @@ const PartnerDashboard = ({ partner }) => {
   const [partnerContracts, setPartnerContracts] = useState([]);
   const [partnerContractsLoading, setPartnerContractsLoading] = useState(false);
   const [partnerContractsErr, setPartnerContractsErr] = useState(null);
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        // For partners, we'll check if they have a valid session
+        // You might need to create a /partner/profile endpoint or use a different approach
+        const res = await fetch('http://localhost:5000/partner/list', {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          // For now, we'll assume the partner is authenticated if they can access partner endpoints
+          // You should implement proper partner authentication checking
+          setIsAuthenticated(true);
+          // Set a dummy partner object for now - you should fetch actual partner data
+          setPartner({ id: 'partner-id', name: 'Partner' });
+        } else {
+          // Redirect to login if not authenticated
+          window.location.href = '/partner';
+        }
+      } catch (err) {
+        // Redirect to login if network error
+        window.location.href = '/partner';
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   useEffect(() => {
     if (section === 'loans') {
@@ -261,6 +295,16 @@ const PartnerDashboard = ({ partner }) => {
     } catch (err) {
       alert('Network error');
     }
+  };
+
+  const handleLogout = () => {
+    // Call logout endpoint to clear server-side session
+    fetch('http://localhost:5000/partner/logout', {
+      credentials: 'include'
+    }).finally(() => {
+      // Redirect to partner login page
+      window.location.href = '/partner';
+    });
   };
 
   const renderSection = () => {
@@ -525,20 +569,53 @@ const PartnerDashboard = ({ partner }) => {
     }
   };
 
-  return (
-    <div style={{ maxWidth: 600, margin: '0 auto', marginTop: 40 }}>
-      <h2>Welcome, {partner?.name || 'Partner'}!</h2>
-      <div style={{ color: '#555', marginBottom: 24 }}>{partner?.email}</div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
-        <button onClick={() => setSection('consent')} style={{ padding: '16px 24px', fontSize: 16 }}>Generate Consent Request</button>
-        <button onClick={() => setSection('loans')} style={{ padding: '16px 24px', fontSize: 16 }}>View Loan Requests</button>
-        <button onClick={() => setSection('insurance')} style={{ padding: '16px 24px', fontSize: 16 }}>View Insurance Requests</button>
-        <button onClick={() => setSection('budgeting')} style={{ padding: '16px 24px', fontSize: 16 }}>View Budget Requests</button>
-        <button onClick={() => setSection('approved')} style={{ padding: '16px 24px', fontSize: 16 }}>View Approved Consents</button>
-        <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
-        <button onClick={() => setSection('partnerContracts')} style={{ padding: '16px 24px', fontSize: 16 }}>View My Contracts</button>
+  // Show loading while checking auth status
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px'
+      }}>
+        Loading...
       </div>
-      {renderSection()}
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to login
+  }
+
+  return (
+    <div className="dashboard-bg">
+      <nav className="dashboard-navbar">
+        <div className="dashboard-logo">CyberSuraksha</div>
+        <div>
+          <button className="dashboard-link" onClick={handleLogout}>Logout</button>
+        </div>
+      </nav>
+      <div className="dashboard-card">
+        <div className="dashboard-header">
+          <div className="dashboard-avatar">
+            <i className="fa-solid fa-handshake"></i>
+          </div>
+          <div className="dashboard-title">Welcome, {partner?.name || 'Partner'}!</div>
+        </div>
+        <div className="dashboard-menu">
+          <button className={`dashboard-menu-btn${section === 'consent' ? ' active' : ''}`} onClick={() => setSection('consent')}>Generate Consent Request</button>
+          <button className={`dashboard-menu-btn${section === 'loans' ? ' active' : ''}`} onClick={() => setSection('loans')}>View Loan Requests</button>
+          <button className={`dashboard-menu-btn${section === 'insurance' ? ' active' : ''}`} onClick={() => setSection('insurance')}>View Insurance Requests</button>
+          <button className={`dashboard-menu-btn${section === 'budgeting' ? ' active' : ''}`} onClick={() => setSection('budgeting')}>View Budget Requests</button>
+          <button className={`dashboard-menu-btn${section === 'approved' ? ' active' : ''}`} onClick={() => setSection('approved')}>View Approved Consents</button>
+          <button className={`dashboard-menu-btn${section === 'logs' ? ' active' : ''}`} onClick={() => setSection('logs')}>View Logs</button>
+          <button className={`dashboard-menu-btn${section === 'partnerContracts' ? ' active' : ''}`} onClick={() => setSection('partnerContracts')}>View My Contracts</button>
+        </div>
+        <div className="dashboard-section">
+          {renderSection()}
+        </div>
+      </div>
     </div>
   );
 };

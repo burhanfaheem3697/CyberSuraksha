@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import PartnerRegisterComponent from './PartnerRegisterComponent';
-import PartnerDashboard from './PartnerDashboard';
+import { useNavigate } from 'react-router-dom';
+import './UserComponent.css';
 
 const PartnerComponent = () => {
-  const [showRegister, setShowRegister] = useState(false);
+  const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [partner, setPartner] = useState(null);
   const [loginError, setLoginError] = useState(null);
 
   const handleChange = (e) => {
@@ -25,8 +23,8 @@ const PartnerComponent = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        setPartner(data.partner);
-        setLoggedIn(true);
+        // Redirect to dashboard page after successful login
+        window.location.href = '/partner/dashboard';
       } else {
         setLoginError(data.message || 'Login failed');
       }
@@ -35,50 +33,40 @@ const PartnerComponent = () => {
     }
   };
 
-  if (showRegister) {
-    return <PartnerRegisterComponent onBack={() => setShowRegister(false)} />;
-  }
-
-  if (loggedIn) {
-    return <PartnerDashboard partner={partner} />;
-  }
-
   return (
-    <div>
-      {/* Navbar */}
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
-        <div style={{ fontWeight: 'bold', fontSize: 24 }}>CyberSuraksha</div>
-        <div>
-          <button style={{ marginRight: 16, padding: '8px 18px' }} onClick={() => setShowRegister(true)}>Register</button>
-          <button style={{ padding: '8px 18px' }} onClick={() => window.location.reload()}>Back to Home</button>
+    <div className="user-bg">
+      <div className="user-card">
+        <div className="user-logo">
+          <i className="fa-solid fa-handshake"></i>
         </div>
-      </nav>
-
-      {/* Hero Section with Login Form */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10vh' }}>
-        <h2>Partner Login</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: 300, gap: 16 }}>
+        <div className="user-title">Partner Login</div>
+        <div className="user-subtitle">Sign in to your partner account</div>
+        <form className="user-form" onSubmit={handleSubmit}>
           <input
+            className="user-input"
             type="email"
             name="email"
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
             required
-            style={{ padding: 10, fontSize: 16 }}
           />
           <input
+            className="user-input"
             type="password"
             name="password"
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
             required
-            style={{ padding: 10, fontSize: 16 }}
           />
-          <button type="submit" style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>Login</button>
+          <button className="user-btn" type="submit">Login</button>
         </form>
-        {loginError && <div style={{ color: 'red', marginTop: 16 }}>{loginError}</div>}
+        {loginError && <div className="user-error">{loginError}</div>}
+        <div style={{ marginTop: 24 }}>
+          <button className="user-link" onClick={() => navigate('/partner/register')}>Register</button>
+          <button className="user-link" onClick={() => navigate('/')}>Back to Home</button>
+        </div>
       </div>
     </div>
   );

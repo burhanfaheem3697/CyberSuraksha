@@ -1,19 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const UserController = require('../controllers/UserController');
-const LoanController = require('../controllers/LoanController');
 const authMiddleware = require('../middleware/authMiddleware')
-// POST /user/register
-router.post('/register', UserController.registerUser);
-
-// POST /user/login
-router.post('/login', UserController.loginUser);
+const { userRegistrationValidator,userLoginValidator } = require('../validators/index.js');
+const {validate} = require('../middleware/validatorsMiddleware.js')
 
 
+router.post('/register',userRegistrationValidator(),validate,UserController.registerUser)
+router.post('/login',userLoginValidator(),validate,UserController.loginUser)
+router.get('/logout',authMiddleware,UserController.logoutUser)
+router.get('/verify/:unhashedToken',UserController.verifyEmail)
+router.post('/forgotPassword',UserController.forgotPasswordRequest)    
+router.post('/changeCurrentPassword/:unhashedToken',UserController.changeCurrentPassword)
+router.get('/profile',authMiddleware,UserController.getCurrentUser)
+router.get('/resendEmail',authMiddleware,UserController.resendVerificationEmail)
+router.get('/refresh',UserController.refreshAccessToken)
 
-
-
-// GET /user/dashboard (placeholder)
-router.get('/dashboard', (req, res) => res.json({ message: 'User dashboard (placeholder)' }));
 
 module.exports = router; 

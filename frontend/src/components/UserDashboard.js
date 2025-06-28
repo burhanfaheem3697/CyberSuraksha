@@ -1,19 +1,61 @@
 import React, { useState, useEffect } from 'react';
+import './UserDashboard.css';
 
-const UserDashboard = ({ user }) => {
+const UserDashboard = () => {
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [section, setSection] = useState('home');
   const [loanForm, setLoanForm] = useState({ purpose: '', partnerId: '' });
   const [loanLoading, setLoanLoading] = useState(false);
   const [loanMsg, setLoanMsg] = useState(null);
   const [loanErr, setLoanErr] = useState(null);
   const [partners, setPartners] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState(null);
+  const [resendMsg, setResendMsg] = useState(null);
+  const [resendError, setResendError] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changePasswordToken, setChangePasswordToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [changePasswordMsg, setChangePasswordMsg] = useState(null);
+  const [changePasswordError, setChangePasswordError] = useState(null);
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/user/profile', {
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.data);
+          setIsAuthenticated(true);
+        } else {
+          // Redirect to login if not authenticated
+          window.location.href = '/user';
+        }
+      } catch (err) {
+        // Redirect to login if network error
+        window.location.href = '/user';
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   // Fetch partners for dropdown
   useEffect(() => {
-    fetch('http://localhost:5000/partner/list')
-      .then(res => res.json())
-      .then(data => setPartners(data.partners || []));
-  }, []);
+    if (isAuthenticated) {
+      fetch('http://localhost:5000/partner/list')
+        .then(res => res.json())
+        .then(data => setPartners(data.partners || []));
+    }
+  }, [isAuthenticated]);
 
   // Consent requests state
   const [consents, setConsents] = useState([]);
@@ -52,7 +94,7 @@ const UserDashboard = ({ user }) => {
           setConsentsLoading(false);
         });
     }
-    if (section === 'logs' && user?.id) {
+    if (section === 'logs' && user?._id) {
       setLogsLoading(true);
       setLogsErr(null);
       fetch(`http://localhost:5000/userauditlog/my`,{credentials : 'include'})
@@ -64,6 +106,20 @@ const UserDashboard = ({ user }) => {
         .catch(() => {
           setLogsErr('Failed to fetch audit logs');
           setLogsLoading(false);
+        });
+    }
+    if (section === 'profile') {
+      setProfileLoading(true);
+      setProfileError(null);
+      fetch('http://localhost:5000/user/profile', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setProfile(data.data || null);
+          setProfileLoading(false);
+        })
+        .catch(() => {
+          setProfileError('Failed to fetch profile');
+          setProfileLoading(false);
         });
     }
   }, [section, user]);
@@ -250,6 +306,55 @@ const UserDashboard = ({ user }) => {
       setBudgetingErr('Network error');
     }
     setBudgetingLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    setResendMsg(null);
+    setResendError(null);
+    try {
+      const res = await fetch('http://localhost:5000/user/resendEmail', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) {
+        setResendMsg('Verification email sent! Check your inbox.');
+      } else {
+        setResendError(data.message || 'Failed to resend verification email');
+      }
+    } catch (err) {
+      setResendError('Network error');
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangePasswordMsg(null);
+    setChangePasswordError(null);
+    try {
+      const res = await fetch(`http://localhost:5000/user/changeCurrentPassword/${changePasswordToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setChangePasswordMsg('Password changed successfully!');
+        setChangePasswordToken('');
+        setNewPassword('');
+      } else {
+        setChangePasswordError(data.message || 'Failed to change password');
+      }
+    } catch (err) {
+      setChangePasswordError('Network error');
+    }
+  };
+
+  const handleLogout = () => {
+    // Call logout endpoint to clear server-side session
+    fetch('http://localhost:5000/user/logout', {
+      credentials: 'include'
+    }).finally(() => {
+      // Redirect to user login page
+      window.location.href = '/user';
+    });
   };
 
   const renderSection = () => {
@@ -489,22 +594,117 @@ const UserDashboard = ({ user }) => {
             </ul>
           </div>
         );
+      case 'profile':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>Profile</h3>
+            {profileLoading && <div>Loading...</div>}
+            {profileError && <div style={{ color: 'red' }}>{profileError}</div>}
+            {profile && (
+              <div className="dashboard-profile-box">
+                <div><b>Username:</b> {profile.username}</div>
+                <div><b>Full Name:</b> {profile.fullname}</div>
+                <div><b>Email:</b> {profile.email}</div>
+                <div><b>Email Verified:</b> {profile.isEmailVerified ? 'Yes' : 'No'}</div>
+                <div><b>Phone:</b> {profile.phone || '-'}</div>
+                <div><b>Aadhaar:</b> {profile.aadhaar || '-'}</div>
+                <div><b>Data Residency:</b> {profile.dataResidency || '-'}</div>
+                {profile.avatar && <div style={{ marginTop: 12 }}><img src={profile.avatar} alt="avatar" style={{ width: 80, height: 80, borderRadius: '50%' }} /></div>}
+                {!profile.isEmailVerified && (
+                  <div style={{ marginTop: 16 }}>
+                    <button onClick={handleResendVerification} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '8px 18px' }}>Resend Verification Email</button>
+                    {resendMsg && <div style={{ color: 'green', marginTop: 8 }}>{resendMsg}</div>}
+                    {resendError && <div style={{ color: 'red', marginTop: 8 }}>{resendError}</div>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      case 'changePassword':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>Change Password</h3>
+            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', width: 350, gap: 14 }}>
+              <input
+                type="text"
+                placeholder="Enter token from email link"
+                value={changePasswordToken}
+                onChange={e => setChangePasswordToken(e.target.value)}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <input
+                type="password"
+                placeholder="New Password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                required
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <button type="submit" style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>Change Password</button>
+            </form>
+            {changePasswordMsg && <div style={{ color: 'green', marginTop: 16 }}>{changePasswordMsg}</div>}
+            {changePasswordError && <div style={{ color: 'red', marginTop: 16 }}>{changePasswordError}</div>}
+            <div style={{ marginTop: 12, color: '#555', fontSize: 14 }}>
+              To change your password, use the token you received in your password reset email.
+            </div>
+          </div>
+        );
       default:
         return null;
     }
   };
 
-  return (
-    <div style={{ maxWidth: 600, margin: '0 auto', marginTop: 40 }}>
-      <h2>Welcome, {user?.name || 'User'}!</h2>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
-        <button onClick={() => setSection('loan')} style={{ padding: '16px 24px', fontSize: 16 }}>Apply for Loan</button>
-        <button onClick={() => setSection('insurance')} style={{ padding: '16px 24px', fontSize: 16 }}>Apply for Insurance</button>
-        <button onClick={() => setSection('budgeting')} style={{ padding: '16px 24px', fontSize: 16 }}>Budgeting</button>
-        <button onClick={() => setSection('consents')} style={{ padding: '16px 24px', fontSize: 16 }}>View Consent Requests</button>
-        <button onClick={() => setSection('logs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Logs</button>
+  // Show loading while checking auth status
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontSize: '18px'
+      }}>
+        Loading...
       </div>
-      {renderSection()}
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to login
+  }
+
+  return (
+    <div className="dashboard-bg">
+      <nav className="dashboard-navbar">
+        <div className="dashboard-logo">CyberSuraksha</div>
+        <div>
+          <button className="dashboard-link" onClick={handleLogout}>Logout</button>
+        </div>
+      </nav>
+      <div className="dashboard-card">
+        <div className="dashboard-header">
+          <div className="dashboard-avatar">
+            <i className="fa-solid fa-user"></i>
+          </div>
+          <div className="dashboard-title">Welcome, {user?.fullname || user?.username || 'User'}!</div>
+          <div className="dashboard-email">{user?.email}</div>
+        </div>
+        <div className="dashboard-menu">
+          <button className={`dashboard-menu-btn${section === 'home' ? ' active' : ''}`} onClick={() => setSection('home')}>Home</button>
+          <button className={`dashboard-menu-btn${section === 'loan' ? ' active' : ''}`} onClick={() => setSection('loan')}>Loan</button>
+          <button className={`dashboard-menu-btn${section === 'insurance' ? ' active' : ''}`} onClick={() => setSection('insurance')}>Insurance</button>
+          <button className={`dashboard-menu-btn${section === 'budgeting' ? ' active' : ''}`} onClick={() => setSection('budgeting')}>Budgeting</button>
+          <button className={`dashboard-menu-btn${section === 'consents' ? ' active' : ''}`} onClick={() => setSection('consents')}>Consents</button>
+          <button className={`dashboard-menu-btn${section === 'logs' ? ' active' : ''}`} onClick={() => setSection('logs')}>Logs</button>
+          <button className={`dashboard-menu-btn${section === 'profile' ? ' active' : ''}`} onClick={() => setSection('profile')}>Profile</button>
+          <button className={`dashboard-menu-btn${section === 'changePassword' ? ' active' : ''}`} onClick={() => setSection('changePassword')}>Change Password</button>
+        </div>
+        <div className="dashboard-section">
+          {renderSection()}
+        </div>
+      </div>
     </div>
   );
 };

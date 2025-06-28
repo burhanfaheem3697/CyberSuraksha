@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import RegisterComponent from './RegisterComponent';
-import UserDashboard from './UserDashboard';
+import { useNavigate } from 'react-router-dom';
+import './UserComponent.css';
 
 const UserComponent = () => {
-  const [showRegister, setShowRegister] = useState(false);
+  const navigate = useNavigate();
+  const [showForgot, setShowForgot] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState(null);
+  const [forgotError, setForgotError] = useState(null);
   const [loginError, setLoginError] = useState(null);
 
   const handleChange = (e) => {
@@ -25,8 +27,8 @@ const UserComponent = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        setUser(data.user);
-        setLoggedIn(true);
+        // Redirect to dashboard page after successful login
+        window.location.href = '/user/dashboard';
       } else {
         setLoginError(data.message || 'Login failed');
       }
@@ -35,50 +37,87 @@ const UserComponent = () => {
     }
   };
 
-  if (showRegister) {
-    return <RegisterComponent onBack={() => setShowRegister(false)} />;
-  }
-
-  if (loggedIn) {
-    return <UserDashboard user={user} />;
-  }
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotMsg(null);
+    setForgotError(null);
+    try {
+      const res = await fetch('http://localhost:5000/user/forgotPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setForgotMsg('Password reset email sent! Check your inbox.');
+        setForgotEmail('');
+      } else {
+        setForgotError(data.message || 'Failed to send reset email');
+      }
+    } catch (err) {
+      setForgotError('Network error');
+    }
+  };
 
   return (
-    <div>
-      {/* Navbar */}
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
-        <div style={{ fontWeight: 'bold', fontSize: 24 }}>CyberSuraksha</div>
-        <div>
-          <button style={{ marginRight: 16, padding: '8px 18px' }} onClick={() => setShowRegister(true)}>Register</button>
-          <button style={{ padding: '8px 18px' }} onClick={() => window.location.reload()}>Back to Home</button>
+    <div className="user-bg">
+      <div className="user-card">
+        <div className="user-logo">
+          <i className="fa-solid fa-user"></i>
         </div>
-      </nav>
-
-      {/* Hero Section with Login Form */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10vh' }}>
-        <h2>User Login</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: 300, gap: 16 }}>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            style={{ padding: 10, fontSize: 16 }}
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            style={{ padding: 10, fontSize: 16 }}
-          />
-          <button type="submit" style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>Login</button>
-        </form>
-        {loginError && <div style={{ color: 'red', marginTop: 16 }}>{loginError}</div>}
+        {!showForgot ? (
+          <>
+            <div className="user-title">User Login</div>
+            <div className="user-subtitle">Sign in to your account</div>
+            <form className="user-form" onSubmit={handleSubmit}>
+              <input
+                className="user-input"
+                type="email"
+                name="email"
+                placeholder="Email"
+                value={form.email}
+                onChange={handleChange}
+                required
+              />
+              <input
+                className="user-input"
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
+              <button className="user-btn" type="submit">Login</button>
+            </form>
+            <button className="user-link" onClick={() => setShowForgot(true)}>Forgot Password?</button>
+            {loginError && <div className="user-error">{loginError}</div>}
+            <div style={{ marginTop: 24 }}>
+              <button className="user-link" onClick={() => navigate('/user/register')}>Register</button>
+              <button className="user-link" onClick={() => navigate('/')}>Back to Home</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="user-title">Forgot Password</div>
+            <div className="user-subtitle">Enter your email to reset password</div>
+            <form className="user-form" onSubmit={handleForgotSubmit}>
+              <input
+                className="user-input"
+                type="email"
+                name="forgotEmail"
+                placeholder="Enter your email"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                required
+              />
+              <button className="user-btn" type="submit">Send Reset Email</button>
+            </form>
+            <button className="user-link" onClick={() => setShowForgot(false)}>Back to Login</button>
+            {forgotMsg && <div className="user-success">{forgotMsg}</div>}
+            {forgotError && <div className="user-error">{forgotError}</div>}
+          </>
+        )}
       </div>
     </div>
   );

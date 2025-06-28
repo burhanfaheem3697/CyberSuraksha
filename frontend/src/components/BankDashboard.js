@@ -1,7 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './UserDashboard.css';
 
-const BankDashboard = ({ bank }) => {
+const BankDashboard = () => {
   const [section, setSection] = useState('home');
+  const [bank, setBank] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:5000/bank/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    navigate('/bank');
+  };
 
   // Approved consents state
   const [approvedConsents, setApprovedConsents] = useState([]);
@@ -329,17 +348,40 @@ const BankDashboard = ({ bank }) => {
     }
   };
 
+  if (loading) {
+    return <div style={{ textAlign: 'center', marginTop: '20vh' }}>Loading...</div>;
+  }
+
+  if (error) {
+    return <div style={{ textAlign: 'center', marginTop: '20vh', color: 'red' }}>{error}</div>;
+  }
+
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', marginTop: 40 }}>
-      <h2>Welcome, {bank?.name || 'Bank'}!</h2>
-      <div style={{ color: '#555', marginBottom: 24 }}>{bank?.email}</div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
-        <button onClick={() => setSection('upload')} style={{ padding: '16px 24px', fontSize: 16 }}>Upload Data</button>
-        <button onClick={() => setSection('approved')} style={{ padding: '16px 24px', fontSize: 16 }}>View Approved Consents</button>
-        <button onClick={() => setSection('auditlogs')} style={{ padding: '16px 24px', fontSize: 16 }}>View Bank Audit Logs</button>
-        <button onClick={() => setSection('contracts')} style={{ padding: '16px 24px', fontSize: 16 }}>View All Contracts</button>
+    <div className="dashboard-bg">
+      <nav className="dashboard-navbar">
+        <div className="dashboard-logo">CyberSuraksha</div>
+        <div>
+          <button className="dashboard-link" onClick={handleLogout}>Logout</button>
+        </div>
+      </nav>
+      <div className="dashboard-card">
+        <div className="dashboard-header">
+          <div className="dashboard-avatar">
+            <i className="fa-solid fa-building-columns"></i>
+          </div>
+          <div className="dashboard-title">Welcome, {bank?.name || 'Bank'}!</div>
+          <div className="dashboard-email">{bank?.email}</div>
+        </div>
+        <div className="dashboard-menu">
+          <button className={`dashboard-menu-btn${section === 'upload' ? ' active' : ''}`} onClick={() => setSection('upload')}>Upload Data</button>
+          <button className={`dashboard-menu-btn${section === 'approved' ? ' active' : ''}`} onClick={() => setSection('approved')}>View Approved Consents</button>
+          <button className={`dashboard-menu-btn${section === 'auditlogs' ? ' active' : ''}`} onClick={() => setSection('auditlogs')}>View Bank Audit Logs</button>
+          <button className={`dashboard-menu-btn${section === 'contracts' ? ' active' : ''}`} onClick={() => setSection('contracts')}>View All Contracts</button>
+        </div>
+        <div className="dashboard-section">
+          {renderSection()}
+        </div>
       </div>
-      {renderSection()}
     </div>
   );
 };

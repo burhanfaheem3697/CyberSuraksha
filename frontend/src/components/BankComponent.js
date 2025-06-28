@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import BankRegisterComponent from './BankRegisterComponent';
-import BankDashboard from './BankDashboard';
+import { useNavigate } from 'react-router-dom';
+import './UserComponent.css';
 
 const BankComponent = () => {
-  const [showRegister, setShowRegister] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [bank, setBank] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -14,6 +14,8 @@ const BankComponent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch('http://localhost:5000/bank/login', {
         method: 'POST',
@@ -23,59 +25,56 @@ const BankComponent = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        setBank(data.bank);
-        setLoggedIn(true);
+        navigate('/bank/dashboard');
       } else {
-        alert(data.message || 'Login failed');
+        setError(data.message || 'Login failed');
       }
     } catch (err) {
-      alert('Network error');
+      setError('Network error');
     }
+    setLoading(false);
   };
 
-  if (showRegister) {
-    return <BankRegisterComponent onBack={() => setShowRegister(false)} />;
-  }
-
-  if (loggedIn) {
-    return <BankDashboard bank={bank} />;
-  }
-
   return (
-    <div>
-      {/* Navbar */}
-      <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
-        <div style={{ fontWeight: 'bold', fontSize: 24 }}>CyberSuraksha</div>
-        <div>
-          <button style={{ marginRight: 16, padding: '8px 18px' }} onClick={() => setShowRegister(true)}>Register</button>
-          <button style={{ padding: '8px 18px' }} onClick={() => window.location.reload()}>Back to Home</button>
+    <div className="user-bg">
+      <div className="user-card">
+        <div className="user-logo">
+          <i className="fa-solid fa-building-columns"></i>
         </div>
-      </nav>
-
-      {/* Hero Section with Login Form */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '10vh' }}>
-        <h2>Bank Login</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: 300, gap: 16 }}>
+        <div className="user-title">Bank Login</div>
+        <div className="user-subtitle">Sign in to your bank account</div>
+        <form className="user-form" onSubmit={handleSubmit}>
           <input
+            className="user-input"
             type="email"
             name="email"
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
             required
-            style={{ padding: 10, fontSize: 16 }}
           />
           <input
+            className="user-input"
             type="password"
             name="password"
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
             required
-            style={{ padding: 10, fontSize: 16 }}
           />
-          <button type="submit" style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>Login</button>
+          <button 
+            className="user-btn"
+            type="submit" 
+            disabled={loading}
+          >
+            {loading ? 'Logging in...' : 'Login'}
+          </button>
         </form>
+        {error && <div className="user-error">{error}</div>}
+        <div style={{ marginTop: 24 }}>
+          <button className="user-link" onClick={() => navigate('/bank/register')}>Register</button>
+          <button className="user-link" onClick={() => navigate('/')}>Back to Home</button>
+        </div>
       </div>
     </div>
   );

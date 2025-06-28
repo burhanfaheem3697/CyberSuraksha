@@ -1,39 +1,27 @@
-import React, { useState } from 'react';
-// Import the respective components (to be created)
-import UserComponent from '../components/UserComponent';
-import PartnerComponent from '../components/PartnerComponent';
-import BankComponent from '../components/BankComponent';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import './LandingPage.css'
+// If you have a logo SVG, import it, else use an emoji or icon
 
 const LandingPage = () => {
-  const [selected, setSelected] = useState(null);
-
-  const renderComponent = () => {
-    switch (selected) {
-      case 'user':
-        return <UserComponent />;
-      case 'partner':
-        return <PartnerComponent />;
-      case 'bank':
-        return <BankComponent />;
-      default:
-        return null;
-    }
-  };
-
-  if (selected) {
-    return renderComponent();    
-  }
+  const navigate = useNavigate();
 
   return (
-    <div style={{ textAlign: 'center', marginTop: '10vh' }}>
-      <h1>Welcome to CyberSuraksha</h1>
-      <div style={{ marginTop: 40 }}>
-        <button onClick={() => setSelected('user')} style={{ margin: 10, padding: '10px 30px' }}>User</button>
-        <button onClick={() => setSelected('partner')} style={{ margin: 10, padding: '10px 30px' }}>Partner</button>
-        <button onClick={() => setSelected('bank')} style={{ margin: 10, padding: '10px 30px' }}>Bank</button>
+    <div className="landing-bg">
+      <div className="landing-card">
+        <div className="landing-logo">
+          {/* Replace with your logo if you have one */}
+          <i className="fa-brands fa-react"></i>
+          {/* or <img src={logo} alt="logo" style={{height: 48}} /> */}
+        </div>
+        <div className="landing-title">Welcome to <br />CyberSuraksha</div>
+        <div className="landing-subtitle">Choose your portal to get started</div>
+        <button className="landing-btn user" onClick={() => navigate('/user')}>User</button>
+        <button className="landing-btn partner" onClick={() => navigate('/partner')}>Partner</button>
+        <button className="landing-btn bank" onClick={() => navigate('/bank')}>Bank</button>
       </div>
     </div>
   );
 };
 
-export default LandingPage; 
+export default LandingPage;

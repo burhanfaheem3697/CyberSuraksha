@@ -9,7 +9,7 @@ const PartnerAuditLog = require('../models/PartnerAuditLog');
 exports.userCreatesLoanRequest = async (req, res) => {
   try {
     const { purpose, partnerId } = req.body;
-    const userId = req.user.userId; // req.user set by auth middleware
+    const userId = req.user.id; // req.user set by auth middleware
     if (!partnerId) {
       return res.status(400).json({ message: 'partnerId is required to create a loan request.' });
     }
@@ -46,7 +46,7 @@ exports.userCreatesLoanRequest = async (req, res) => {
       context: { loanRequestId: loanRequest._id }
     });
     await PartnerAuditLog.create({
-      virtualUserId: loanRequest.virtualId,
+      virtualUserId: newVirtualID._id,
       action: 'LOAN_REQUEST_CREATED',
       details: {
         partnerId,

@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './UserComponent.css';
 
-const RegisterComponent = ({ onBack }) => {
+const RegisterComponent = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '',
+    username: '',
+    fullname: '',
+    avatar: '',
     email: '',
     password: '',
     phone: '',
@@ -30,8 +35,11 @@ const RegisterComponent = ({ onBack }) => {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage('Registration successful! You can now log in.');
-        setForm({ name: '', email: '', password: '', phone: '', aadhaar: '', dataResidency: '' });
+        setMessage('Registration successful! Check your email to verify your account.');
+        setForm({ username: '', fullname: '', avatar: '', email: '', password: '', phone: '', aadhaar: '', dataResidency: '' });
+        setTimeout(() => {
+          navigate('/user');
+        }, 3000);
       } else {
         setError(data.message || 'Registration failed');
       }
@@ -42,22 +50,38 @@ const RegisterComponent = ({ onBack }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '8vh' }}>
-      <h2>User Registration</h2>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', width: 350, gap: 14 }}>
-        <input name="name" placeholder="Name" value={form.name} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
-        <input name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
-        <input name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required style={{ padding: 10, fontSize: 16 }} />
-        <input name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} style={{ padding: 10, fontSize: 16 }} />
-        <input name="aadhaar" placeholder="Aadhaar" value={form.aadhaar} onChange={handleChange} style={{ padding: 10, fontSize: 16 }} />
-        <input name="dataResidency" placeholder="Data Residency" value={form.dataResidency} onChange={handleChange} style={{ padding: 10, fontSize: 16 }} />
-        <button type="submit" disabled={loading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
-          {loading ? 'Registering...' : 'Register'}
-        </button>
-        <button type="button" onClick={onBack} style={{ marginTop: 8, background: 'none', color: '#1976d2', border: 'none', cursor: 'pointer' }}>Back to Login</button>
-      </form>
-      {message && <div style={{ color: 'green', marginTop: 16 }}>{message}</div>}
-      {error && <div style={{ color: 'red', marginTop: 16 }}>{error}</div>}
+    <div className="user-bg">
+      <div className="user-card user-card-wide">
+        <div className="user-logo">
+          <i className="fa-solid fa-user-plus"></i>
+        </div>
+        <div className="user-title">User Registration</div>
+        <div className="user-subtitle">Create your account</div>
+        <form className="user-form user-form-grid" onSubmit={handleSubmit}>
+          <div className="user-form-row">
+            <input className="user-input" name="username" placeholder="Username" value={form.username} onChange={handleChange} required />
+            <input className="user-input" name="fullname" placeholder="Full Name" value={form.fullname} onChange={handleChange} required />
+          </div>
+          <div className="user-form-row">
+            {/* <input className="user-input" name="avatar" placeholder="Avatar URL (optional)" value={form.avatar} onChange={handleChange} /> */}
+            <input className="user-input" name="email" type="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+          </div>
+          <div className="user-form-row">
+            <input className="user-input" name="password" type="password" placeholder="Password" value={form.password} onChange={handleChange} required />
+            <input className="user-input" name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
+          </div>
+          <div className="user-form-row">
+            <input className="user-input" name="aadhaar" placeholder="Aadhaar" value={form.aadhaar} onChange={handleChange} />
+            <input className="user-input" name="dataResidency" placeholder="Data Residency" value={form.dataResidency} onChange={handleChange} />
+          </div>
+          <button className="user-btn" type="submit" disabled={loading}>
+            {loading ? 'Registering...' : 'Register'}
+          </button>
+          <button type="button" className="user-link" onClick={() => navigate('/user')}>Back to Login</button>
+        </form>
+        {message && <div className="user-success">{message}</div>}
+        {error && <div className="user-error">{error}</div>}
+      </div>
     </div>
   );
 };
