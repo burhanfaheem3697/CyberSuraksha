@@ -1,10 +1,7 @@
-const Consent = require('../models/Consent');
-const AuditLog = require('../models/AuditLog');
+
 const Bank = require('../models/Bank'); // Assume this model exists
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const UserBankData = require('../models/UserBankData');
-const VirtualID = require('../models/VirtualID');
 
 
 

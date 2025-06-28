@@ -11,13 +11,14 @@ const partnerRoutes = require('./routes/partner');
 const bankRoutes = require('./routes/bank');
 const consentRoutes = require('./routes/consent');
 const virtualIdRoutes = require('./routes/virtualid');
-const auditRoutes = require('./routes/audit');
 const loanRoutes = require('./routes/loan');
 const insuranceRoutes = require('./routes/insurance');
 const budgetingRoutes = require('./routes/budgeting');
 const contractRoutes = require('./routes/contract');
 const userBankDataRoutes = require('./routes/userbankdata');
 const bankAuditLogRoutes = require('./routes/bankauditlog');
+const userAuditLogRoutes = require('./routes/userauditlog');
+const partnerAuditLogRoutes = require('./routes/partnerauditlog')
 
 const app = express();
 
@@ -49,13 +50,14 @@ app.use('/partner', partnerRoutes);
 app.use('/bank', bankRoutes);
 app.use('/consent', consentRoutes);
 app.use('/virtualid', virtualIdRoutes);
-app.use('/audit', auditRoutes);
 app.use('/loan', loanRoutes);
 app.use('/insurance', insuranceRoutes);
 app.use('/budgeting', budgetingRoutes);
 app.use('/contract', contractRoutes);
 app.use('/userbankdata', userBankDataRoutes);
 app.use('/bankauditlog', bankAuditLogRoutes);
+app.use('/userauditlog', userAuditLogRoutes);
+app.use('/partnerauditlog',partnerAuditLogRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

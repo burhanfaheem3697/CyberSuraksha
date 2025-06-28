@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const Consent = require('../models/Consent');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const UserBankData = require('../models/UserBankData');

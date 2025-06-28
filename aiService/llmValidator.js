@@ -5,6 +5,7 @@ exports.validateWithLLM = async (consentRequest) => {
   const prompt = buildPromptFromConsent(consentRequest);
 
   const response = await callLLM(prompt);
+  console.log("response from validator : ",response)
 
   try {
     const parsed = JSON.parse(response);

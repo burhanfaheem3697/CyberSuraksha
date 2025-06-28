@@ -55,7 +55,7 @@ const UserDashboard = ({ user }) => {
     if (section === 'logs' && user?.id) {
       setLogsLoading(true);
       setLogsErr(null);
-      fetch(`http://localhost:5000/audit/user`,{credentials : 'include'})
+      fetch(`http://localhost:5000/userauditlog/my`,{credentials : 'include'})
         .then(res => res.json())
         .then(data => {
           setLogs(data.logs || []);
@@ -119,7 +119,7 @@ const UserDashboard = ({ user }) => {
         setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, status: 'APPROVED' } : c));
         // Optionally refresh logs
         if (section === 'logs' && user?.id) {
-          fetch(`http://localhost:5000/audit/user`,{credentials : 'include'})
+          fetch(`http://localhost:5000/userauditlog/my`,{credentials : 'include'})
             .then(res => res.json())
             .then(data => setLogs(data.logs || []));
         }
@@ -151,7 +151,7 @@ const UserDashboard = ({ user }) => {
         setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, status: 'REVOKED', revokeReason } : c));
         // Optionally refresh logs
         if (section === 'logs' && user?.id) {
-          fetch(`http://localhost:5000/audit/user`,{credentials : 'include'})
+          fetch(`http://localhost:5000/userauditlog/my`,{credentials : 'include'})
             .then(res => res.json())
             .then(data => setLogs(data.logs || []));
         }
@@ -474,15 +474,16 @@ const UserDashboard = ({ user }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {logs.map((log) => (
                 <li key={log._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
+                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
+                  {log.details && Object.keys(log.details).length > 0 && (
+                    <div><b>Details:</b> <pre style={{ margin: 0 }}>{JSON.stringify(log.details, null, 2)}</pre></div>
+                  )}
+                  {log.context && Object.keys(log.context).length > 0 && (
+                    <div><b>Context:</b> <pre style={{ margin: 0 }}>{JSON.stringify(log.context, null, 2)}</pre></div>
+                  )}
                   <div><b>Action:</b> {log.action}</div>
-                  <div><b>Purpose:</b> {log.purpose}</div>
                   <div><b>Status:</b> {log.status}</div>
                   <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
-                  <div><b>Partner:</b> {log.partnerId?.name || '-'}</div>
-                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
-                  {log.action === 'CONSENT_REVOKED' && log.context?.revokeReason && (
-                    <div><b>Revoke Reason:</b> {log.context.revokeReason}</div>
-                  )}
                 </li>
               ))}
             </ul>

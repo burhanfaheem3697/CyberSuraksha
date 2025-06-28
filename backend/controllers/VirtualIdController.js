@@ -1,7 +1,5 @@
 const VirtualID = require('../models/VirtualID');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
-const crypto = require('crypto');
 
 // Issue a new virtual ID for a consent
 exports.issueVirtualIdForConsent = async (req, res) => {
@@ -18,16 +16,6 @@ exports.issueVirtualIdForConsent = async (req, res) => {
     // Attach to user
     await User.findByIdAndUpdate(userId, { $push: { virtualIds: newVirtualID._id } });
     // Log the issuance
-    await AuditLog.create({
-      virtualUserId: newVirtualID._id,
-      partnerId,
-      action: 'VIRTUAL_ID_ISSUED',
-      purpose,
-      scopes: [],
-      timestamp: new Date(),
-      status: 'SUCCESS',
-      context: { virtualIdId: newVirtualID._id }
-    });
     res.status(201).json({ message: 'Virtual ID issued', virtualId: newVirtualID });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

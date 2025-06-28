@@ -1,71 +1,130 @@
 const Consent = require('../models/Consent');
-const PolicyRule = require('../models/PolicyRule');
-const AuditLog = require('../models/AuditLog');
 const User = require('../models/User')
 const BankAuditLog = require('../models/BankAuditLog');
 const Partner = require('../models/Partner');
 const { evaluateConsentRequest } = require('../../aiService/decisionEngine');
+const { classifyPurpose } = require('../../aiService/llmPurposeClassifier');
+const UserAuditLog = require('../models/UserAuditLog')
+const PartnerAuditLog = require('../models/PartnerAuditLog');
+
+// Helper to get userId from virtualUserId
+async function getUserIdFromVirtualId(virtualUserId) {
+  const virtualIdDoc = await require('../models/VirtualID').findById(virtualUserId);
+  return virtualIdDoc ? virtualIdDoc.userId : null;
+}
 
 // Partner submits a consent request
 exports.createConsentRequest = async (req, res) => {
   try {
-    const { virtualUserId, purpose, dataFields, duration } = req.body;
+    const { virtualUserId, rawPurpose, dataFields, duration } = req.body;
     const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
     // Fetch partner info for AI validation
     const partner = await Partner.findById(partnerId);
     if (!partner) {
       return res.status(400).json({ message: 'Invalid partner ID' });
     }
+    // Classify the raw purpose
+    const classification = await classifyPurpose(req.body);
+    const main_category = classification.main_category;
+
+    console.log("main category : ",main_category)
     // Prepare AI validation input
     const aiRequest = {
       partnerId: partnerId,
       partnerName: partner.name,
       partnerTrustScore: partner.trustScore,
-      purpose,
+      purpose: main_category,
       fieldsRequested: dataFields,
       requestedDurationDays: duration,
       timestamp: Date.now(),
     };
     // Run AI validation
     const aiResult = await evaluateConsentRequest(aiRequest);
-
-    console.log(aiResult);
     if (!aiResult.approved) {
-      await AuditLog.create({
-        virtualUserId: virtualUserId,
-        partnerId: partnerId,
+      
+      await UserAuditLog.create({
+        virtualUserId,
         action: 'CONSENT_REJECTED',
-        purpose: purpose,
-        scopes: dataFields,
-        timestamp: new Date(),
+        details: {
+          partnerId,
+          purpose: main_category,
+          dataFields,
+          reason: aiResult.reason,
+          rawPurpose,
+          main_category,
+          sub_category: classification.sub_category,
+          requires_sensitive_data: classification.requires_sensitive_data,
+          justification: classification.justification
+        },
         status: 'REJECTED',
-        context: { source: aiResult.source, reason: aiResult.reason }
+        context: { source: aiResult.source }
       });
-
+      await PartnerAuditLog.create({
+        virtualUserId,
+        action: 'CONSENT_REJECTED',
+        details: {
+          partnerId,
+          purpose: main_category,
+          dataFields,
+          reason: aiResult.reason,
+          rawPurpose,
+          main_category,
+          sub_category: classification.sub_category,
+          requires_sensitive_data: classification.requires_sensitive_data,
+          justification: classification.justification
+        },
+        status: 'REJECTED',
+        context: { source: aiResult.source }
+      });
       return res.status(403).json({
         status: "REJECTED",
         source: aiResult.source,
-        reason: aiResult.reason
+        reason: aiResult.reason,
+        main_category,
+        sub_category: classification.sub_category,
+        justification: classification.justification
       });
     }
     // If approved, save consent
     const consent = new Consent({
       virtualUserId,
       partnerId,
-      purpose,
+      purpose: main_category,
       dataFields,
       duration,
       status: 'PENDING',
     });
     await consent.save();
     // Log the creation
-    await AuditLog.create({
-      virtualUserId: virtualUserId,
-      partnerId: partnerId,
+    await UserAuditLog.create({
+      virtualUserId,
       action: 'CONSENT_CREATED',
-      purpose: purpose,
-      scopes: dataFields,
-      timestamp: new Date(),
+      details: {
+        partnerId,
+        purpose: main_category,
+        dataFields,
+        rawPurpose,
+        main_category,
+        sub_category: classification.sub_category,
+        requires_sensitive_data: classification.requires_sensitive_data,
+        justification: classification.justification
+      },
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId,
+      action: 'CONSENT_CREATED',
+      details: {
+        partnerId,
+        purpose: main_category,
+        dataFields,
+        rawPurpose,
+        main_category,
+        sub_category: classification.sub_category,
+        requires_sensitive_data: classification.requires_sensitive_data,
+        justification: classification.justification
+      },
       status: 'SUCCESS',
       context: { consentId: consent._id }
     });
@@ -74,13 +133,20 @@ exports.createConsentRequest = async (req, res) => {
       virtualUserId: virtualUserId,
       partnerId,
       action: 'CONSENT_CREATED',
-      purpose: purpose,
+      purpose: main_category,
       scopes: dataFields,
       timestamp: new Date(),
       status: 'SUCCESS',
-      context: { consentId: consent._id }
+      context: {
+        consentId: consent._id,
+        rawPurpose,
+        main_category,
+        sub_category: classification.sub_category,
+        requires_sensitive_data: classification.requires_sensitive_data,
+        justification: classification.justification
+      }
     });
-    res.status(201).json({ message: 'Consent request created', consent });
+    res.status(201).json({ message: 'Consent request created', consent, main_category, sub_category: classification.sub_category, justification: classification.justification });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -115,25 +181,7 @@ exports.viewConsents = async (req, res) => {
   }
 }; 
 
-// Validate consent request against policy rules
-exports.validateWithPolicyLayer = async (req, res) => {
-  try {
-    const { purpose, dataFields } = req.body;
-    const policy = await PolicyRule.findOne({ purpose });
-    if (!policy) {
-      return res.status(400).json({ message: 'No policy rule found for this purpose' });
-    }
-    // Check if all requested fields are allowed
-    const notAllowed = dataFields.filter(f => !policy.allowedFields.includes(f));
-    if (notAllowed.length > 0) {
-      return res.status(400).json({ message: 'Some fields are not allowed', notAllowed });
-    }
-    // Additional checks (retention, trustScore, etc.) can be added here
-    res.json({ message: 'Policy validation passed' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
+
 
 // Validate consent with privacy sandbox (placeholder)
 exports.validateWithPrivacySandbox = async (req, res) => {
@@ -145,15 +193,6 @@ exports.validateWithPrivacySandbox = async (req, res) => {
   }
 };
 
-// Forward consent request to user dashboard (placeholder)
-exports.forwardToUserDashboard = async (req, res) => {
-  try {
-    // Placeholder: In real app, notify user via dashboard/notification
-    res.json({ message: 'Consent request forwarded to user dashboard (placeholder)' });
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
-};
 
 // User approves consent
 exports.userApprovesConsent = async (req, res) => {
@@ -171,13 +210,27 @@ exports.userApprovesConsent = async (req, res) => {
     }
     await consent.save();
     // Log the approval
-    await AuditLog.create({
+    await UserAuditLog.create({
       virtualUserId: consent.virtualUserId,
-      partnerId: consent.partnerId,
       action: 'CONSENT_APPROVED',
-      purpose: consent.purpose,
-      scopes: consent.dataFields,
-      timestamp: new Date(),
+      details: {
+        partnerId: consent.partnerId,
+        purpose: consent.purpose,
+        dataFields: consent.dataFields,
+        approvedAt: consent.approvedAt,
+      },
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      action: 'CONSENT_APPROVED',
+      details: {
+        partnerId: consent.partnerId,
+        purpose: consent.purpose,
+        dataFields: consent.dataFields,
+        approvedAt: consent.approvedAt,
+      },
       status: 'SUCCESS',
       context: { consentId: consent._id }
     });
@@ -222,15 +275,31 @@ exports.revokeConsent = async (req, res) => {
     if (revokeReason) consent.revokeReason = revokeReason;
     await consent.save();
     // Log the revocation
-    await AuditLog.create({
+    await UserAuditLog.create({
       virtualUserId: consent.virtualUserId,
-      partnerId: consent.partnerId,
       action: 'CONSENT_REVOKED',
-      purpose: consent.purpose,
-      scopes: consent.dataFields,
-      timestamp: new Date(),
+      details: {
+        partnerId: consent.partnerId,
+        purpose: consent.purpose,
+        dataFields: consent.dataFields,
+        revokedAt: consent.revokedAt,
+        revokeReason: consent.revokeReason,
+      },
       status: 'SUCCESS',
-      context: { consentId: consent._id, revokeReason },
+      context: { consentId: consent._id }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      action: 'CONSENT_REVOKED',
+      details: {
+        partnerId: consent.partnerId,
+        purpose: consent.purpose,
+        dataFields: consent.dataFields,
+        revokedAt: consent.revokedAt,
+        revokeReason: consent.revokeReason,
+      },
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
     });
     // Log to BankAuditLog as well
     await BankAuditLog.create({

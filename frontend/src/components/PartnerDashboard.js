@@ -4,9 +4,14 @@ const PartnerDashboard = ({ partner }) => {
   const [section, setSection] = useState('home');
   const [consentForm, setConsentForm] = useState({
     virtualUserId: '',
-    purpose: '',
+    rawPurpose: '',
     dataFields: '',
     duration: '',
+    jurisdiction: '',
+    dataResidency: '',
+    crossBorder: false,
+    quantumSafe: false,
+    anonymization: false,
   });
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentMsg, setConsentMsg] = useState(null);
@@ -76,7 +81,7 @@ const PartnerDashboard = ({ partner }) => {
     if (section === 'logs' && partner?.id) {
       setLogsLoading(true);
       setLogsErr(null);
-      fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+      fetch(`http://localhost:5000/partnerauditlog/my`, { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
           setLogs(data.logs || []);
@@ -160,7 +165,17 @@ const PartnerDashboard = ({ partner }) => {
       const data = await res.json();
       if (res.ok) {
         setConsentMsg('Consent request created successfully!');
-        setConsentForm({ virtualUserId: '', purpose: '', dataFields: '', duration: '' });
+        setConsentForm({
+          virtualUserId: '',
+          rawPurpose: '',
+          dataFields: '',
+          duration: '',
+          jurisdiction: '',
+          dataResidency: '',
+          crossBorder: false,
+          quantumSafe: false,
+          anonymization: false,
+        });
       } else {
         setConsentErr(data.message || 'Failed to create consent request');
       }
@@ -184,7 +199,7 @@ const PartnerDashboard = ({ partner }) => {
         setLoans((prev) => prev.map(l => l._id === loanRequestId ? { ...l, status: 'APPROVED' } : l));
         // Optionally refresh logs
         if (section === 'logs' && partner?.id) {
-          fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+          fetch(`http://localhost:5000/partnerauditlog/my`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => setLogs(data.logs || []));
         }
@@ -210,7 +225,7 @@ const PartnerDashboard = ({ partner }) => {
         setInsuranceRequests((prev) => prev.map(i => i._id === insuranceRequestId ? { ...i, status: 'APPROVED' } : i));
         // Optionally refresh logs
         if (section === 'logs' && partner?.id) {
-          fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+          fetch(`http://localhost:5000/partnerauditlog/my`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => setLogs(data.logs || []));
         }
@@ -236,7 +251,7 @@ const PartnerDashboard = ({ partner }) => {
         setBudgetRequests((prev) => prev.map(b => b._id === budgetingRequestId ? { ...b, status: 'APPROVED' } : b));
         // Optionally refresh logs
         if (section === 'logs' && partner?.id) {
-          fetch(`http://localhost:5000/audit/partner`, { credentials: 'include' })
+          fetch(`http://localhost:5000/partnerauditlog/my`, { credentials: 'include' })
             .then(res => res.json())
             .then(data => setLogs(data.logs || []));
         }
@@ -263,18 +278,14 @@ const PartnerDashboard = ({ partner }) => {
                 required
                 style={{ padding: 10, fontSize: 16 }}
               />
-              <select
-                name="purpose"
-                value={consentForm.purpose}
+              <textarea
+                name="rawPurpose"
+                placeholder="Describe the purpose of this consent"
+                value={consentForm.rawPurpose}
                 onChange={handleConsentChange}
                 required
                 style={{ padding: 10, fontSize: 16 }}
-              >
-                <option value="">Select Purpose</option>
-                <option value="loan">loan</option>
-                <option value="insurance">insurance</option>
-                <option value="budgeting">budgeting</option>
-              </select>
+              />
               <input
                 name="dataFields"
                 placeholder="Data Fields (comma separated)"
@@ -292,6 +303,52 @@ const PartnerDashboard = ({ partner }) => {
                 required
                 style={{ padding: 10, fontSize: 16 }}
               />
+              <input
+                name="jurisdiction"
+                placeholder="Jurisdiction (e.g., IN, EU)"
+                value={consentForm.jurisdiction}
+                onChange={handleConsentChange}
+                style={{ padding: 10, fontSize: 16 }}
+              />
+              <select
+                name="dataResidency"
+                value={consentForm.dataResidency}
+                onChange={handleConsentChange}
+                style={{ padding: 10, fontSize: 16 }}
+              >
+                <option value="">Select Data Residency</option>
+                <option value="IN">IN</option>
+                <option value="EU">EU</option>
+                <option value="US">US</option>
+                <option value="ANY">ANY</option>
+              </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  name="crossBorder"
+                  checked={consentForm.crossBorder}
+                  onChange={e => setConsentForm(f => ({ ...f, crossBorder: e.target.checked }))}
+                />
+                Cross-border Transfer
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  name="quantumSafe"
+                  checked={consentForm.quantumSafe}
+                  onChange={e => setConsentForm(f => ({ ...f, quantumSafe: e.target.checked }))}
+                />
+                Quantum-safe Required
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  name="anonymization"
+                  checked={consentForm.anonymization}
+                  onChange={e => setConsentForm(f => ({ ...f, anonymization: e.target.checked }))}
+                />
+                Anonymization Required
+              </label>
               <button type="submit" disabled={consentLoading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
                 {consentLoading ? 'Submitting...' : 'Create Consent Request'}
               </button>
@@ -424,9 +481,14 @@ const PartnerDashboard = ({ partner }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {logs.map((log) => (
                 <li key={log._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
-                  <div><b>Virtual ID:</b> {log.virtualUserId || '-'}</div>
+                  <div><b>Virtual User ID:</b> {log.virtualUserId || (log.details && log.details.virtualUserId) || '-'}</div>
+                  {log.details && Object.keys(log.details).length > 0 && (
+                    <div><b>Details:</b> <pre style={{ margin: 0 }}>{JSON.stringify(log.details, null, 2)}</pre></div>
+                  )}
+                  {log.context && Object.keys(log.context).length > 0 && (
+                    <div><b>Context:</b> <pre style={{ margin: 0 }}>{JSON.stringify(log.context, null, 2)}</pre></div>
+                  )}
                   <div><b>Action:</b> {log.action}</div>
-                  <div><b>Purpose:</b> {log.purpose}</div>
                   <div><b>Status:</b> {log.status}</div>
                   <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
                 </li>

@@ -1,8 +1,9 @@
 const LoanRequest = require('../models/LoanRequest');
 const User = require('../models/User');
 const VirtualID = require('../models/VirtualID');
-const AuditLog = require('../models/AuditLog');
 const crypto = require('crypto');
+const UserAuditLog = require('../models/UserAuditLog')
+const PartnerAuditLog = require('../models/PartnerAuditLog');
 
 // User creates a loan request
 exports.userCreatesLoanRequest = async (req, res) => {
@@ -33,13 +34,25 @@ exports.userCreatesLoanRequest = async (req, res) => {
     });
     await loanRequest.save();
     // Log the creation
-    await AuditLog.create({
+    await UserAuditLog.create({
       virtualUserId: newVirtualID._id,
-      partnerId: partnerId,
       action: 'LOAN_REQUEST_CREATED',
-      purpose: purpose,
-      scopes: [],
-      timestamp: new Date(),
+      details: {
+        partnerId,
+        purpose,
+        loanRequestId: loanRequest._id
+      },
+      status: 'SUCCESS',
+      context: { loanRequestId: loanRequest._id }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId: loanRequest.virtualId,
+      action: 'LOAN_REQUEST_CREATED',
+      details: {
+        partnerId,
+        purpose,
+        loanRequestId: loanRequest._id
+      },
       status: 'SUCCESS',
       context: { loanRequestId: loanRequest._id }
     });
@@ -73,13 +86,27 @@ exports.partnerReviewsLoanRequest = async (req, res) => {
     loanRequest.status = status;
     await loanRequest.save();
     // Log the review
-    await AuditLog.create({
+    await UserAuditLog.create({
       virtualUserId: loanRequest.virtualId,
-      partnerId: req.partner ? req.partner._id : null,
       action: 'LOAN_REQUEST_REVIEWED',
-      purpose: loanRequest.purpose,
-      scopes: [],
-      timestamp: new Date(),
+      details: {
+        partnerId: req.partner ? req.partner._id : null,
+        purpose: loanRequest.purpose,
+        loanRequestId,
+        newStatus: status
+      },
+      status: 'SUCCESS',
+      context: { loanRequestId, newStatus: status }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId: loanRequest.virtualId,
+      action: 'LOAN_REQUEST_REVIEWED',
+      details: {
+        partnerId: req.partner ? req.partner._id : null,
+        purpose: loanRequest.purpose,
+        loanRequestId,
+        newStatus: status
+      },
       status: 'SUCCESS',
       context: { loanRequestId, newStatus: status }
     });
@@ -111,13 +138,27 @@ exports.partnerApproveLoanRequest = async (req, res) => {
     loanRequest.status = 'APPROVED';
     await loanRequest.save();
     // Log the approval
-    await AuditLog.create({
+    await UserAuditLog.create({
       virtualUserId: loanRequest.virtualId,
-      partnerId,
       action: 'LOAN_REQUEST_APPROVED',
-      purpose: loanRequest.purpose,
-      scopes: [],
-      timestamp: new Date(),
+      details: {
+        partnerId,
+        purpose: loanRequest.purpose,
+        loanRequestId,
+        newStatus: 'APPROVED'
+      },
+      status: 'SUCCESS',
+      context: { loanRequestId, newStatus: 'APPROVED' }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId: loanRequest.virtualId,
+      action: 'LOAN_REQUEST_APPROVED',
+      details: {
+        partnerId,
+        purpose: loanRequest.purpose,
+        loanRequestId,
+        newStatus: 'APPROVED'
+      },
       status: 'SUCCESS',
       context: { loanRequestId, newStatus: 'APPROVED' }
     });

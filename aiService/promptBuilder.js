@@ -1,26 +1,47 @@
 exports.buildPromptFromConsent = (request) => {
-  const { partnerName, purpose, fieldsRequested, requestedDurationDays, partnerTrustScore } = request;
+  const {
+    partnerName,
+    purpose,
+    rawPurpose,
+    fieldsRequested,
+    requestedDurationDays,
+    partnerTrustScore,
+    jurisdiction,
+    dataResidency,
+    crossBorder,
+    quantumSafe,
+    anonymization
+  } = request;
 
   return `
-You are a consent policy evaluator under India's DPDP Act.
+You are a consent policy evaluator and intent classifier under India's DPDP Act and global privacy standards.
 
-Rules:
-- Only necessary data should be requested.
-- Aadhaar should not be requested unless mandatory.
-- Trust score must be ≥ 7 for sensitive data.
-- Retention must be ≤ 7 days.
+Given the following consent request, do the following:
+1. Infer the intent behind the requested fields (explain why each field might be needed for the stated purpose).
+2. Validate the request for compliance, including any edge cases or policy gaps not covered by deterministic rules.
+3. If you find any risk, missing policy, or compliance issue, explain it.
 
 Request:
 Partner: ${partnerName}
-Purpose: ${purpose}
-Requested Fields: ${fieldsRequested.join(", ")}
+Purpose (category): ${purpose}
+Purpose (free text): ${rawPurpose}
+Requested Fields: ${Array.isArray(fieldsRequested) ? fieldsRequested.join(", ") : fieldsRequested}
 Retention: ${requestedDurationDays} days
 Trust Score: ${partnerTrustScore}
+Data Residency: ${dataResidency}
+Cross-border: ${crossBorder}
+Quantum-safe: ${quantumSafe}
+Anonymization: ${anonymization}
 
 Respond in JSON:
 {
   "approved": true/false,
-  "reason": "short explanation"
+  "reason": "short explanation",
+  "field_intent": {
+    "field1": "reason for field1",
+    "field2": "reason for field2"
+  },
+  "compliance_gaps": ["list any missing or ambiguous policy areas"]
 }
 `;
 }; 

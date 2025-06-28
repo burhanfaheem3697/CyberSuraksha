@@ -1,6 +1,7 @@
 const Contract = require('../models/Contract');
 const BankAuditLog = require('../models/BankAuditLog');
-const AuditLog = require('../models/AuditLog');
+const UserAuditLog = require('../models/UserAuditLog')
+const PartnerAuditLog = require('../models/PartnerAuditLog');
 
 // Create a new contract entry
 exports.createContract = async (req, res) => {
@@ -34,13 +35,29 @@ exports.createContract = async (req, res) => {
       context: { contractId: contract._id }
     });
     // Log to normal AuditLog for users
-    await AuditLog.create({
-      virtualUserId: virtualUserId,
-      partnerId,
+    await UserAuditLog.create({
+      virtualUserId,
       action: 'CONTRACT_CREATED',
-      purpose: purpose,
-      scopes: allowedFields,
-      timestamp: new Date(),
+      details: {
+        partnerId,
+        purpose,
+        allowedFields,
+        retentionDays,
+        contractId: contract._id
+      },
+      status: 'SUCCESS',
+      context: { contractId: contract._id }
+    });
+    await PartnerAuditLog.create({
+      virtualUserId,
+      action: 'CONTRACT_CREATED',
+      details: {
+        partnerId,
+        purpose,
+        allowedFields,
+        retentionDays,
+        contractId: contract._id
+      },
       status: 'SUCCESS',
       context: { contractId: contract._id }
     });
