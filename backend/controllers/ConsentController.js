@@ -1,4 +1,6 @@
 const Consent = require('../models/Consent');
+const PolicyRule = require('../models/PolicyRule');
+const AuditLog = require('../models/AuditLog');
 const User = require('../models/User')
 const BankAuditLog = require('../models/BankAuditLog');
 const Partner = require('../models/Partner');
@@ -96,6 +98,16 @@ exports.createConsentRequest = async (req, res) => {
     });
     await consent.save();
     // Log the creation
+    await AuditLog.create({
+      virtualUserId: virtualUserId,
+      partnerId: partnerId,
+      action: 'CONSENT_CREATED',
+      purpose: purpose,
+      scopes: dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
     await UserAuditLog.create({
       virtualUserId,
       action: 'CONSENT_CREATED',
@@ -210,6 +222,16 @@ exports.userApprovesConsent = async (req, res) => {
     }
     await consent.save();
     // Log the approval
+    await AuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      partnerId: consent.partnerId,
+      action: 'CONSENT_APPROVED',
+      purpose: consent.purpose,
+      scopes: consent.dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id }
+    });
     await UserAuditLog.create({
       virtualUserId: consent.virtualUserId,
       action: 'CONSENT_APPROVED',
@@ -275,6 +297,16 @@ exports.revokeConsent = async (req, res) => {
     if (revokeReason) consent.revokeReason = revokeReason;
     await consent.save();
     // Log the revocation
+    await AuditLog.create({
+      virtualUserId: consent.virtualUserId,
+      partnerId: consent.partnerId,
+      action: 'CONSENT_REVOKED',
+      purpose: consent.purpose,
+      scopes: consent.dataFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { consentId: consent._id, revokeReason },
+    });
     await UserAuditLog.create({
       virtualUserId: consent.virtualUserId,
       action: 'CONSENT_REVOKED',
@@ -312,6 +344,19 @@ exports.revokeConsent = async (req, res) => {
       status: 'SUCCESS',
       context: { consentId: consent._id, revokeReason },
     });
+    // Emit socket.io event to contract room(s)
+    try {
+      const Contract = require('../models/Contract');
+      const contracts = await Contract.find({ consentId: consent._id });
+      const io = req.app.get('io');
+      if (io && contracts.length > 0) {
+        contracts.forEach(contract => {
+          io.to(`contract_${contract._id}`).emit('consent_revoked', { contractId: contract._id.toString() });
+        });
+      }
+    } catch (err) {
+      console.error('Socket.io emit error:', err);
+    }
     res.json({ message: 'Consent revoked', consent });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

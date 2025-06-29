@@ -8,9 +8,6 @@ const { sendMail,emailVerificationMailGenToken, forgotPasswordMailGenContent }  
 const crypto = require('crypto')
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-
-// Login user
-
 // Register a new user
 
 exports.registerUser = asyncHandler(async (req,res) => {

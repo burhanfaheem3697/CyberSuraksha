@@ -3,7 +3,7 @@ const User = require('../models/User');
 const VirtualID = require('../models/VirtualID');
 const UserAuditLog = require('../models/UserAuditLog')
 const PartnerAuditLog = require('../models/PartnerAuditLog');
-
+const AuditLog = require('../models/AuditLog');
 // User creates an insurance request
 exports.userCreatesInsuranceRequest = async (req, res) => {
   try {
@@ -33,6 +33,16 @@ exports.userCreatesInsuranceRequest = async (req, res) => {
     });
     await insuranceRequest.save();
     // Log the creation
+    await AuditLog.create({
+      virtualUserId: newVirtualID._id,
+      partnerId: partnerId,
+      action: 'INSURANCE_REQUEST_CREATED',
+      purpose: purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { insuranceRequestId: insuranceRequest._id }
+    });
     await UserAuditLog.create({
       virtualUserId: newVirtualID._id,
       action: 'INSURANCE_REQUEST_CREATED',
@@ -83,6 +93,16 @@ exports.partnerReviewsInsuranceRequest = async (req, res) => {
     insuranceRequest.status = status;
     await insuranceRequest.save();
     // Log the review
+    await AuditLog.create({
+      virtualUserId: insuranceRequest.virtualId,
+      partnerId: req.partner ? req.partner._id : null,
+      action: 'INSURANCE_REQUEST_REVIEWED',
+      purpose: insuranceRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { insuranceRequestId, newStatus: status }
+    });
     await UserAuditLog.create({
       virtualUserId: insuranceRequest.virtualId,
       action: 'INSURANCE_REQUEST_REVIEWED',
@@ -135,6 +155,16 @@ exports.partnerApproveInsuranceRequest = async (req, res) => {
     insuranceRequest.status = 'APPROVED';
     await insuranceRequest.save();
     // Log the approval
+    await AuditLog.create({
+      virtualUserId: insuranceRequest.virtualId,
+      partnerId,
+      action: 'INSURANCE_REQUEST_APPROVED',
+      purpose: insuranceRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { insuranceRequestId, newStatus: 'APPROVED' }
+    });
     await UserAuditLog.create({
       virtualUserId: insuranceRequest.virtualId,
       action: 'INSURANCE_REQUEST_APPROVED',

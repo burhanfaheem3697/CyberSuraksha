@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './UserDashboard.css';
-
+import DataRoomView from './DataRoomView';
 const PartnerDashboard = () => {
   const [partner, setPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +51,9 @@ const PartnerDashboard = () => {
   const [partnerContractsLoading, setPartnerContractsLoading] = useState(false);
   const [partnerContractsErr, setPartnerContractsErr] = useState(null);
 
+  // Data room state
+  const [openDataRoomContractId, setOpenDataRoomContractId] = useState(null);
+
   // Check authentication status on component mount
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -88,28 +91,40 @@ const PartnerDashboard = () => {
       fetch('http://localhost:5000/loan/view-loan-requests', {
         credentials: 'include'
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            return res.text().then(text => { throw new Error(`HTTP ${res.status}: ${text}`); });
+          }
+          return res.json();
+        })
         .then(data => {
           setLoans(data.loanRequests || []);
           setLoansLoading(false);
         })
-        .catch(() => {
+        .catch((err) => {
           setLoansErr('Failed to fetch loan requests');
           setLoansLoading(false);
+          console.error('Loan requests fetch error:', err);
         });
     }
     if (section === 'approved') {
       setApprovedLoading(true);
       setApprovedErr(null);
       fetch('http://localhost:5000/consent/consents-approved',{credentials : 'include'})
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            return res.text().then(text => { throw new Error(`HTTP ${res.status}: ${text}`); });
+          }
+          return res.json();
+        })
         .then(data => {
           setApprovedConsents(data.consents || []);
           setApprovedLoading(false);
         })
-        .catch(() => {
+        .catch((err) => {
           setApprovedErr('Failed to fetch approved consents');
           setApprovedLoading(false);
+          console.error('Approved consents fetch error:', err);
         });
     }
     if (section === 'logs' && partner?.id) {
@@ -547,21 +562,92 @@ const PartnerDashboard = () => {
             {partnerContractsLoading && <div>Loading...</div>}
             {partnerContractsErr && <div style={{ color: 'red' }}>{partnerContractsErr}</div>}
             {!partnerContractsLoading && !partnerContractsErr && partnerContracts.length === 0 && <div>No contracts found.</div>}
+            {openDataRoomContractId ? (
+              <DataRoomView 
+                contractId={openDataRoomContractId} 
+                onClose={() => setOpenDataRoomContractId(null)} 
+              />
+            ) : (
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              {partnerContracts.map((contract) => (
-                <li key={contract._id} style={{ border: '1px solid #ddd', borderRadius: 6, margin: '12px 0', padding: 16 }}>
-                  <div><b>Contract ID:</b> {contract._id}</div>
-                  <div><b>Bank:</b> {typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id || JSON.stringify(contract.bankId) : contract.bankId}</div>
-                  <div><b>Virtual User ID:</b> {typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id || JSON.stringify(contract.virtualUserId) : contract.virtualUserId}</div>
-                  <div><b>Purpose:</b> {contract.purpose}</div>
-                  <div><b>Status:</b> {contract.status}</div>
-                  <div><b>Allowed Fields:</b> {contract.allowedFields && contract.allowedFields.join(', ')}</div>
-                  <div><b>Created At:</b> {new Date(contract.createdAt).toLocaleString()}</div>
-                  <div><b>Documents:</b> <pre style={{ margin: 0 }}>{JSON.stringify(contract.documents, null, 2)}</pre></div>
-                  {contract.data && <div><b>Data:</b> <pre style={{ margin: 0 }}>{JSON.stringify(contract.data, null, 2)}</pre></div>}
+                {partnerContracts.map((contract) => (
+                <li key={contract._id} style={{ 
+                  border: '1px solid #ddd', 
+                  borderRadius: 8, 
+                  margin: '12px 0', 
+                  padding: 20,
+                  background: '#f8f9fa',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h4 style={{ margin: 0, color: '#1976d2' }}>Contract {contract._id.slice(-8)}</h4>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      background: contract.status === 'ACTIVE' ? '#43a047' : '#fbc02d',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
+                    }}>
+                      {contract.status}
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                    <div><strong>Bank:</strong> {typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id : contract.bankId}</div>
+                    <div><strong>Virtual User ID:</strong> {typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id : contract.virtualUserId}</div>
+                    <div><strong>Purpose:</strong> {contract.purpose}</div>
+                    <div><strong>Created:</strong> {new Date(contract.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <strong>Allowed Fields:</strong>
+                    <div style={{ 
+                      marginTop: '8px',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px'
+                    }}>
+                      {contract.allowedFields && contract.allowedFields.map((field, idx) => (
+                        <span key={idx} style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          background: '#e3f2fd',
+                          color: '#1976d2',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}>
+                          {field}
+                        </span>
+                      ))}
+                    </div>
+                      </div>
+                      <button 
+                        onClick={() => setOpenDataRoomContractId(contract._id)}
+                        style={{ 
+                          background: '#1976d2', 
+                          color: '#fff', 
+                          border: 'none', 
+                      padding: '12px 24px', 
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.background = '#1565c0';
+                      e.target.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = '#1976d2';
+                      e.target.style.transform = 'translateY(0)';
+                        }}
+                      >
+                    🔒 Open Secure Data Room
+                      </button>
                 </li>
-              ))}
+                  ))}
             </ul>
+            )}
           </div>
         );
       default:

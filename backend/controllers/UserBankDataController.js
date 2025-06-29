@@ -1,5 +1,9 @@
 const VirtualID = require('../models/VirtualID');
 const UserBankData = require('../models/UserBankData');
+// const { anonymizeFields } = require('../utils/anonymizer');
+const { logPartnerAccess } = require('../utils/auditLogger');
+const Contract = require('../models/Contract');
+const { maskFields } = require('../utils/fieldMasker');
 
 // Fetch user bank data for a given virtual user id and selected fields
 exports.fetchUserDataByVirtualId = async (req, res) => {
@@ -33,5 +37,61 @@ exports.fetchUserDataByVirtualId = async (req, res) => {
     res.json({ data: result });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Controller to get sandboxed bank data
+exports.getSandboxedBankData = async (req, res) => {
+  try {
+    const { virtualId, partnerId, contractId } = req.body;
+    const allowedFields = req.allowedFields;
+    if (!virtualId || !allowedFields) {
+      return res.status(400).json({ error: 'Missing virtualId or allowedFields' });
+    }
+
+    // Try UserBankData first
+    let userBankData = await UserBankData.findOne({ user_id: virtualId }).lean();
+
+    // If not found, try Contract data
+    if (!userBankData && contractId) {
+      const contract = await Contract.findById(contractId).lean();
+      if (contract && contract.data) {
+        userBankData = contract.data;
+      }
+    }
+
+    if (!userBankData) {
+      return res.status(404).json({ error: 'User bank data not found' });
+    }
+
+    // Filter only allowed fields
+    const filteredData = {};
+    allowedFields.forEach(field => {
+      if (userBankData.hasOwnProperty(field)) {
+        filteredData[field] = userBankData[field];
+      }
+    });
+    console.log('Allowed fields:', allowedFields);
+    console.log('Filtered Data:', filteredData);
+
+    // Mask sensitive fields if present
+    const fieldsToMask = [
+      'aadhaar',
+      'pan',
+      'address',
+      'income',
+      'credit_score',
+      'txn_summary',
+      'employer',
+      'last_updated'
+    ];
+    const maskedData = maskFields(filteredData, fieldsToMask);
+
+    res.json({ data: maskedData });
+
+    // Log partner access after responding
+    logPartnerAccess(partnerId, virtualId, contractId, allowedFields, new Date());
+  } catch (err) {
+    return res.status(500).json({ error: 'Error fetching sandboxed bank data', details: err.message });
   }
 }; 

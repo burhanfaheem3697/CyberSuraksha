@@ -2,6 +2,7 @@ const Partner = require('../models/Partner');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const AuditLog = require('../models/AuditLog')
 
 // Register a new partner
 exports.registerPartner = async (req, res) => {

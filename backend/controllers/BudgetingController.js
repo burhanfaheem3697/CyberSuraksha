@@ -3,7 +3,7 @@ const User = require('../models/User');
 const VirtualID = require('../models/VirtualID');
 const UserAuditLog = require('../models/UserAuditLog')
 const PartnerAuditLog = require('../models/PartnerAuditLog');
-
+const AuditLog = require('../models/AuditLog');
 // User creates a budgeting request
 exports.userCreatesBudgetingRequest = async (req, res) => {
   try {
@@ -34,6 +34,16 @@ exports.userCreatesBudgetingRequest = async (req, res) => {
     });
     await budgetingRequest.save();
     // Log the creation
+    await AuditLog.create({
+      virtualUserId: newVirtualID._id,
+      partnerId: partnerId,
+      action: 'BUDGETING_REQUEST_CREATED',
+      purpose: purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { budgetingRequestId: budgetingRequest._id }
+    });
     await UserAuditLog.create({
       virtualUserId: newVirtualID._id,
       action: 'BUDGETING_REQUEST_CREATED',
@@ -84,6 +94,16 @@ exports.partnerReviewsBudgetingRequest = async (req, res) => {
     budgetingRequest.status = status;
     await budgetingRequest.save();
     // Log the review
+    await AuditLog.create({
+      virtualUserId: budgetingRequest.virtualId,
+      partnerId: req.partner ? req.partner._id : null,
+      action: 'BUDGETING_REQUEST_REVIEWED',
+      purpose: budgetingRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { budgetingRequestId, newStatus: status }
+    });
     await UserAuditLog.create({
       virtualUserId: budgetingRequest.virtualId,
       action: 'BUDGETING_REQUEST_REVIEWED',
@@ -136,6 +156,16 @@ exports.partnerApproveBudgetingRequest = async (req, res) => {
     budgetingRequest.status = 'APPROVED';
     await budgetingRequest.save();
     // Log the approval
+    await AuditLog.create({
+      virtualUserId: budgetingRequest.virtualId,
+      partnerId,
+      action: 'BUDGETING_REQUEST_APPROVED',
+      purpose: budgetingRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { budgetingRequestId, newStatus: 'APPROVED' }
+    });
     await UserAuditLog.create({
       virtualUserId: budgetingRequest.virtualId,
       action: 'BUDGETING_REQUEST_APPROVED',

@@ -3,6 +3,8 @@ const cors = require('cors');
 const connectDB = require('./connectDB');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
+const http = require('http');
+const socketIo = require('socket.io');
 
 dotenv.config();
 
@@ -21,6 +23,10 @@ const userAuditLogRoutes = require('./routes/userauditlog');
 const partnerAuditLogRoutes = require('./routes/partnerauditlog')
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, { cors: { origin: '*' } }); // Adjust CORS as needed
+
+app.set('io', io);
 
 app.use(cors({
   origin: 'http://localhost:3000', // or use an array for multiple origins
@@ -58,8 +64,18 @@ app.use('/userbankdata', userBankDataRoutes);
 app.use('/bankauditlog', bankAuditLogRoutes);
 app.use('/userauditlog', userAuditLogRoutes);
 app.use('/partnerauditlog',partnerAuditLogRoutes)
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Example: handle socket connections
+io.on('connection', (socket) => {
+  socket.on('join_contract_room', (contractId) => {
+    socket.join(`contract_${contractId}`);
+  });
+  socket.on('leave_contract_room', (contractId) => {
+    socket.leave(`contract_${contractId}`);
+  });
 });
+
+server.listen(process.env.PORT || 5000, () => {
+  console.log('Server running...${PORT}');
+});
+
+module.exports = { app, server };

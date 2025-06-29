@@ -1,6 +1,7 @@
 const LoanRequest = require('../models/LoanRequest');
 const User = require('../models/User');
 const VirtualID = require('../models/VirtualID');
+const AuditLog = require('../models/AuditLog');
 const crypto = require('crypto');
 const UserAuditLog = require('../models/UserAuditLog')
 const PartnerAuditLog = require('../models/PartnerAuditLog');
@@ -34,6 +35,16 @@ exports.userCreatesLoanRequest = async (req, res) => {
     });
     await loanRequest.save();
     // Log the creation
+    await AuditLog.create({
+      virtualUserId: newVirtualID._id,
+      partnerId: partnerId,
+      action: 'LOAN_REQUEST_CREATED',
+      purpose: purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { loanRequestId: loanRequest._id }
+    });
     await UserAuditLog.create({
       virtualUserId: newVirtualID._id,
       action: 'LOAN_REQUEST_CREATED',
@@ -86,6 +97,16 @@ exports.partnerReviewsLoanRequest = async (req, res) => {
     loanRequest.status = status;
     await loanRequest.save();
     // Log the review
+    await AuditLog.create({
+      virtualUserId: loanRequest.virtualId,
+      partnerId: req.partner ? req.partner._id : null,
+      action: 'LOAN_REQUEST_REVIEWED',
+      purpose: loanRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { loanRequestId, newStatus: status }
+    });
     await UserAuditLog.create({
       virtualUserId: loanRequest.virtualId,
       action: 'LOAN_REQUEST_REVIEWED',
@@ -138,6 +159,16 @@ exports.partnerApproveLoanRequest = async (req, res) => {
     loanRequest.status = 'APPROVED';
     await loanRequest.save();
     // Log the approval
+    await AuditLog.create({
+      virtualUserId: loanRequest.virtualId,
+      partnerId,
+      action: 'LOAN_REQUEST_APPROVED',
+      purpose: loanRequest.purpose,
+      scopes: [],
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { loanRequestId, newStatus: 'APPROVED' }
+    });
     await UserAuditLog.create({
       virtualUserId: loanRequest.virtualId,
       action: 'LOAN_REQUEST_APPROVED',

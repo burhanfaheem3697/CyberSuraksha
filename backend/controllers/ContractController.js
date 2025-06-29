@@ -35,6 +35,16 @@ exports.createContract = async (req, res) => {
       context: { contractId: contract._id }
     });
     // Log to normal AuditLog for users
+    await AuditLog.create({
+      virtualUserId: virtualUserId,
+      partnerId,
+      action: 'CONTRACT_CREATED',
+      purpose: purpose,
+      scopes: allowedFields,
+      timestamp: new Date(),
+      status: 'SUCCESS',
+      context: { contractId: contract._id }
+    });
     await UserAuditLog.create({
       virtualUserId,
       action: 'CONTRACT_CREATED',
