@@ -99,11 +99,9 @@ exports.loginUser = asyncHandler(async (req,res) => {
 
   //generate access and refresh token
 
-  console.log("Reached here");
   const accessToken = user.generateAccessToken()
   const refreshToken = user.generateRefreshToken()
 
-  console.log("reached");
 
   user.refreshToken = refreshToken
 
@@ -192,7 +190,6 @@ exports.changeCurrentPassword = asyncHandler(async (req,res) => {
 
 exports.getCurrentUser = asyncHandler(async (req,res) => {
   const userId = req.user.id
-  console.log("User Id : ",userId)
 
   const user = await User.findById(userId)
 
