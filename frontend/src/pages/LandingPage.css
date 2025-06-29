@@ -132,7 +132,7 @@
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s;
+    transition: left 0.3s;
   }
   
   .landing-btn:hover::before {
@@ -140,39 +140,52 @@
   }
   
   .landing-btn.user {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #667eea;
     color: white;
     box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
   }
   
   .landing-btn.user:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+    /* box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4); */
     background: linear-gradient(135deg, #7c8df0 0%, #8557b8 100%);
+    /* border: 2px solid #667eea; */
+    box-shadow: 
+      0 15px 35px rgba(102, 126, 234, 0.4),
+      0 0 20px rgba(102, 126, 234, 0.6),
+      inset 0 0 20px rgba(102, 126, 234, 0.1);
   }
   
   .landing-btn.partner {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: hotpink;
     color: white;
     box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
   }
   
   .landing-btn.partner:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(240, 147, 251, 0.4);
-    background: linear-gradient(135deg, #f5a3ff 0%, #ff6b82 100%);
+    /* box-shadow: 0 15px 35px rgba(240, 147, 251, 0.4); */
+    /* border: 2px solid hotpink; */
+    box-shadow: 
+      0 15px 35px rgba(240, 147, 251, 0.4),
+      0 0 20px rgba(255, 105, 180, 0.6),
+      inset 0 0 20px rgba(255, 105, 180, 0.1);
   }
   
   .landing-btn.bank {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: #009688;
     color: white;
     box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3);
   }
   
   .landing-btn.bank:hover {
     transform: translateY(-3px);
-    box-shadow: 0 15px 35px rgba(79, 172, 254, 0.4);
-    background: linear-gradient(135deg, #5fb9ff 0%, #1affff 100%);
+    /* box-shadow: 0 15px 35px rgba(79, 172, 254, 0.4); */
+    /* border: 2px solid #009688; */
+    box-shadow: 
+      0 15px 35px rgba(79, 172, 254, 0.4),
+      0 0 20px rgba(0, 150, 136, 0.6),
+      inset 0 0 20px rgba(0, 150, 136, 0.1);
   }
   
   .landing-btn:active {
