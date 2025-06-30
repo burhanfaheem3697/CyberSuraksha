@@ -25,13 +25,7 @@ exports.getDataRoom = async (req, res) => {
       }
     }
 
-    console.log('[getDataRoom] Incoming request:', {
-      virtualId,
-      allowedFields,
-      contractId,
-      partnerId,
-      cookies: req.cookies,
-    });
+    
 
     if (!virtualId) {
       console.error('[getDataRoom] virtualId missing in request');

@@ -2,7 +2,7 @@ const Contract = require('../models/Contract');
 const BankAuditLog = require('../models/BankAuditLog');
 const UserAuditLog = require('../models/UserAuditLog')
 const PartnerAuditLog = require('../models/PartnerAuditLog');
-
+const AuditLog = require('../models/AuditLog')
 // Create a new contract entry
 exports.createContract = async (req, res) => {
   const bankId = req.bank.bankId

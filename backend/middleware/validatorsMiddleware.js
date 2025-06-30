@@ -2,13 +2,8 @@ const { validationResult } = require("express-validator");
 const ApiError = require('../utils/api_Error')
 
 exports.validate = (req,res,next) => {    
-    console.log(req.body)
-    
     
     const errors = validationResult(req)
-
-    console.log("error : ",errors)
-    
 
     if(errors.isEmpty()) return next()
     const extractedError = []   

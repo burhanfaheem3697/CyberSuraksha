@@ -183,7 +183,7 @@ exports.viewApprovedConsents = async (req, res) => {
 // View user's consents
 exports.viewConsents = async (req, res) => {
   try {
-    const userId = req.user.userId; // req.user is set by auth middleware
+    const userId = req.user.id; // req.user is set by auth middleware
     // Fetch the user's virtualIds from the User model
     const user = await User.findById(userId).select('virtualIds');
     if (!user) {
