@@ -362,13 +362,7 @@ const PartnerDashboard = () => {
                 required
                 style={{ padding: 10, fontSize: 16 }}
               />
-              <input
-                name="jurisdiction"
-                placeholder="Jurisdiction (e.g., IN, EU)"
-                value={consentForm.jurisdiction}
-                onChange={handleConsentChange}
-                style={{ padding: 10, fontSize: 16 }}
-              />
+              
               <select
                 name="dataResidency"
                 value={consentForm.dataResidency}

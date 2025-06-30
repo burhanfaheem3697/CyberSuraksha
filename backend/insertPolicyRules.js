@@ -22,7 +22,7 @@ const rules = [
       explanation: "Only non-sensitive financial data is required to evaluate creditworthiness for loan issuance.",
       piiSensitivity: "HIGH",
       storageType: "ENCRYPTED",
-      sandboxed: true,
+      sandboxed: true, 
     },
   },
   {

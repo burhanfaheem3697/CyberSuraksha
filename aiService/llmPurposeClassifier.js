@@ -26,29 +26,21 @@ Purpose (free text): ${rawPurpose}
 `;
 
   const response = await callLLM(prompt);
-  console.log("response from classifier : ",response);
-  return extractJsonFromResponse(response);
+  const start = response.indexOf('{');
+  const end = response.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    const jsonString = response.substring(start, end + 1);
+    try {
+      const parsed = JSON.parse(jsonString);
+      return parsed;
+    } catch (e) {
+      console.error("JSON parse error:", e.message);
+      return { approved: false, source: "LLM", reason: "Invalid category response" };
+    }
+  } else {
+    console.error("Could not find JSON object in response");
+    return { approved: false, source: "LLM", reason: "Could not find JSON object in response" };
+  }
+  
 };
 
-function extractJsonFromResponse(response) {
-  // Match the first {...} block (even if surrounded by code fences or text)
-  const match = response.match(/```(?:json)?\s*([\s\S]*?)\s*```|({[\s\S]*})/i);
-  if (match) {
-    // If matched with code fence, use group 1, else use group 2
-    const jsonStr = match[1] || match[2];
-    try {
-      return JSON.parse(jsonStr);
-    } catch (err) {
-      // Fallback: try to find the first { ... } block
-      const curlyMatch = response.match(/{[\s\S]*}/);
-      console.log(curlyMatch)
-      if (curlyMatch) {
-        try {
-          return JSON.parse(curlyMatch[0]);
-        } catch (e) {}
-      }
-      return { main_category: "other", sub_category: null, requires_sensitive_data: true, justification: "LLM parsing failed" };
-    }
-  }
-  return { main_category: "other", sub_category: null, requires_sensitive_data: true, justification: "LLM parsing failed" };
-} 

@@ -4,13 +4,6 @@ exports.buildPromptFromConsent = (request) => {
     purpose,
     rawPurpose,
     fieldsRequested,
-    requestedDurationDays,
-    partnerTrustScore,
-    jurisdiction,
-    dataResidency,
-    crossBorder,
-    quantumSafe,
-    anonymization
   } = request;
 
   return `
@@ -26,12 +19,6 @@ Partner: ${partnerName}
 Purpose (category): ${purpose}
 Purpose (free text): ${rawPurpose}
 Requested Fields: ${Array.isArray(fieldsRequested) ? fieldsRequested.join(", ") : fieldsRequested}
-Retention: ${requestedDurationDays} days
-Trust Score: ${partnerTrustScore}
-Data Residency: ${dataResidency}
-Cross-border: ${crossBorder}
-Quantum-safe: ${quantumSafe}
-Anonymization: ${anonymization}
 
 Respond in JSON:
 {

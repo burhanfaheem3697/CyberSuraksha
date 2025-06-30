@@ -7,8 +7,7 @@ exports.validateWithRules = async (consentRequest) => {
     purpose, // This should be the main_category from the classifier
     fieldsRequested,
     requestedDurationDays,
-    timestamp,
-    jurisdiction, // e.g., "IN"
+    partnerTrustScore,
     dataResidency, // e.g., "IN"
     crossBorder, // boolean, if cross-border transfer is requested
     quantumSafe, // boolean, if quantum-safe is required
@@ -22,9 +21,9 @@ exports.validateWithRules = async (consentRequest) => {
   if (!partner) return { approved: false, source: "RULE", reason: "Invalid partner ID" };
 
   // Jurisdiction check
-  if (jurisdiction && rule.jurisdiction?.length && !rule.jurisdiction.includes(jurisdiction)) {
-    return { approved: false, source: "RULE", reason: `Jurisdiction ${jurisdiction} not allowed` };
-  }
+  // if (jurisdiction && rule.jurisdiction?.length && !rule.jurisdiction.includes(jurisdiction)) {
+  //   return { approved: false, source: "RULE", reason: `Jurisdiction ${jurisdiction} not allowed` };
+  // }
 
   // Regulatory reference check (optional, for logging/audit)
   // You can log rule.regulatoryRefs if needed
@@ -43,7 +42,7 @@ exports.validateWithRules = async (consentRequest) => {
   }
 
   // Trust score
-  if (partner.trustScore < rule.minTrustScore) {
+  if (partnerTrustScore < rule.minTrustScore) {
     return { approved: false, source: "RULE", reason: `Trust score too low` };
   }
 

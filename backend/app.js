@@ -8,6 +8,8 @@ const socketIo = require('socket.io');
 
 dotenv.config();
 
+const PORT = process.env.PORT || 5000;
+
 const userRoutes = require('./routes/user');
 const partnerRoutes = require('./routes/partner');
 const bankRoutes = require('./routes/bank');
@@ -74,8 +76,8 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(process.env.PORT || 5000, () => {
-  console.log('Server running...${PORT}');
+server.listen(PORT, () => {
+  console.log(`Server running on port : ${PORT}`);
 });
 
 module.exports = { app, server };

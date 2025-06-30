@@ -18,7 +18,7 @@ async function getUserIdFromVirtualId(virtualUserId) {
 // Partner submits a consent request
 exports.createConsentRequest = async (req, res) => {
   try {
-    const { virtualUserId, rawPurpose, dataFields, duration } = req.body;
+    const { virtualUserId, rawPurpose, dataFields, duration,dataResidency,crossBorder,quantumSafe,anonymization } = req.body;
     const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
     // Fetch partner info for AI validation
     const partner = await Partner.findById(partnerId);
@@ -29,15 +29,19 @@ exports.createConsentRequest = async (req, res) => {
     const classification = await classifyPurpose(req.body);
     const main_category = classification.main_category;
 
-    console.log("main category : ",main_category)
     // Prepare AI validation input
     const aiRequest = {
-      partnerId: partnerId,
       partnerName: partner.name,
-      partnerTrustScore: partner.trustScore,
+      partnerId: partnerId,
       purpose: main_category,
       fieldsRequested: dataFields,
       requestedDurationDays: duration,
+      partnerTrustScore: partner.trustScore,
+      dataResidency,
+      crossBorder,
+      quantumSafe,
+      anonymization,
+      rawPurpose,
       timestamp: Date.now(),
     };
     // Run AI validation
@@ -102,7 +106,7 @@ exports.createConsentRequest = async (req, res) => {
       virtualUserId: virtualUserId,
       partnerId: partnerId,
       action: 'CONSENT_CREATED',
-      purpose: purpose,
+      purpose: main_category,
       scopes: dataFields,
       timestamp: new Date(),
       status: 'SUCCESS',
