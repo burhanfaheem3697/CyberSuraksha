@@ -11,50 +11,183 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 // Register a new user
 
 exports.registerUser = asyncHandler(async (req,res) => {
-  //get data
-  const {email,username,fullname,password,phone, aadhaar, dataResidency} = req.body
-  
-  //validation done by middleware
-  //check if user already exist
-  const existingUser = await User.findOne({email})
+  try {
+    //get data
+    const {email,username,fullname,password,phone, aadhaar, dataResidency} = req.body
+    console.log("Registration request received:", { email, username, fullname, phone, aadhaar, dataResidency });
+    
+    //validation done by middleware
+    //check if user already exist
+    const existingUser = await User.findOne({email})
 
-  if(existingUser) throw new ApiError(400,"User already exist")
-  
-  //create user
-  const user = await User.create({email,username,fullname,password,phone,aadhaar,dataResidency})
+    if(existingUser) throw new ApiError(400,"User already exist")
+    
+    //create user
+    const user = await User.create({email,username,fullname,password,phone,aadhaar,dataResidency})
 
-  if(!user) throw new ApiError(400,"Error while registering user")
+    if(!user) throw new ApiError(400,"Error while registering user")
+    console.log("User created successfully:", user._id);
 
-  const dummyBankData = new UserBankData({
-    user_id : user._id,
-    income: 50000 + Math.floor(Math.random() * 50000),
-    credit_score: 700 + Math.floor(Math.random() * 100),
-    txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
-    employer: 'DummyCorp',
-    last_updated: new Date()
-  });
-  await dummyBankData.save();
+    try {
+      // Create dummy bank data with proper ObjectId reference
+      const dummyBankData = new UserBankData({
+        user_id: user._id,
+        income: 50000 + Math.floor(Math.random() * 50000),
+        credit_score: 700 + Math.floor(Math.random() * 100),
+        txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
+        accounts: [
+          {
+            account_type: 'Savings',
+            account_number: 'XXXX' + Math.floor(1000 + Math.random() * 9000),
+            balance: 50000 + Math.floor(Math.random() * 150000),
+            currency: 'INR',
+            transactions: [
+              {
+                date: new Date(),
+                description: 'Salary Credit',
+                amount: 50000 + Math.floor(Math.random() * 50000),
+                type: 'credit',
+                category: 'income'
+              },
+              {
+                date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+                description: 'Grocery Shopping',
+                amount: 2000 + Math.floor(Math.random() * 3000),
+                type: 'debit',
+                category: 'groceries'
+              },
+              {
+                date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+                description: 'Electricity Bill',
+                amount: 1000 + Math.floor(Math.random() * 1000),
+                type: 'debit',
+                category: 'utilities'
+              }
+            ]
+          },
+          {
+            account_type: 'Current',
+            account_number: 'XXXX' + Math.floor(1000 + Math.random() * 9000),
+            balance: 100000 + Math.floor(Math.random() * 500000),
+            currency: 'INR',
+            transactions: [
+              {
+                date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                description: 'Client Payment',
+                amount: 25000 + Math.floor(Math.random() * 25000),
+                type: 'credit',
+                category: 'income'
+              },
+              {
+                date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+                description: 'Office Supplies',
+                amount: 5000 + Math.floor(Math.random() * 5000),
+                type: 'debit',
+                category: 'business'
+              }
+            ]
+          }
+        ],
+        loans: [
+          {
+            loan_type: 'Personal',
+            amount: 500000 + Math.floor(Math.random() * 500000),
+            interest_rate: 8 + Math.random() * 4,
+            tenure: 36,
+            emi: 15000 + Math.floor(Math.random() * 10000),
+            remaining_amount: 300000 + Math.floor(Math.random() * 300000),
+            status: 'Active'
+          },
+          {
+            loan_type: 'Home',
+            amount: 2000000 + Math.floor(Math.random() * 3000000),
+            interest_rate: 7 + Math.random() * 2,
+            tenure: 180,
+            emi: 20000 + Math.floor(Math.random() * 15000),
+            remaining_amount: 1500000 + Math.floor(Math.random() * 2000000),
+            status: 'Active'
+          }
+        ],
+        cards: [
+          {
+            card_type: 'Credit',
+            card_number: 'XXXX XXXX XXXX ' + Math.floor(1000 + Math.random() * 9000),
+            expiry: '0' + (Math.floor(Math.random() * 9) + 1) + '/' + (new Date().getFullYear() + 3).toString().slice(-2),
+            credit_limit: 100000 + Math.floor(Math.random() * 100000),
+            outstanding: 25000 + Math.floor(Math.random() * 50000),
+            rewards_points: Math.floor(Math.random() * 5000)
+          },
+          {
+            card_type: 'Debit',
+            card_number: 'XXXX XXXX XXXX ' + Math.floor(1000 + Math.random() * 9000),
+            expiry: '0' + (Math.floor(Math.random() * 9) + 1) + '/' + (new Date().getFullYear() + 5).toString().slice(-2)
+          }
+        ],
+        monthly_expenses: {
+          housing: 15000 + Math.floor(Math.random() * 10000),
+          utilities: 3000 + Math.floor(Math.random() * 2000),
+          groceries: 8000 + Math.floor(Math.random() * 4000),
+          transportation: 4000 + Math.floor(Math.random() * 3000),
+          entertainment: 5000 + Math.floor(Math.random() * 5000),
+          healthcare: 2000 + Math.floor(Math.random() * 3000),
+          miscellaneous: 3000 + Math.floor(Math.random() * 2000)
+        },
+        savings: {
+          fixed_deposits: 200000 + Math.floor(Math.random() * 300000),
+          recurring_deposits: 50000 + Math.floor(Math.random() * 100000),
+          mutual_funds: 100000 + Math.floor(Math.random() * 200000),
+          stocks: 50000 + Math.floor(Math.random() * 150000),
+          others: 25000 + Math.floor(Math.random() * 75000)
+        },
+        employer: 'DummyCorp',
+        employment_history: [
+          {
+            company: 'DummyCorp',
+            position: 'Senior Developer',
+            start_date: new Date(new Date().setFullYear(new Date().getFullYear() - 2)),
+            end_date: null,
+            salary: 50000 + Math.floor(Math.random() * 50000)
+          },
+          {
+            company: 'PreviousCompany',
+            position: 'Developer',
+            start_date: new Date(new Date().setFullYear(new Date().getFullYear() - 5)),
+            end_date: new Date(new Date().setFullYear(new Date().getFullYear() - 2)),
+            salary: 30000 + Math.floor(Math.random() * 30000)
+          }
+        ],
+        last_updated: new Date()
+      });
 
-  
-  //send verification email
-  const {unhashedToken,hashedToken,tokenExpiry} = user.generateTemporaryToken()
-  user.emailVerificationToken = hashedToken
-  user.emailVerificationTokenExpiry = tokenExpiry
-  await user.save()
+      const savedBankData = await dummyBankData.save();
+      console.log("User bank data created successfully:", savedBankData._id);
+    } catch (error) {
+      console.error("Error creating bank data:", error);
+      // Don't throw error here, as we want to continue with user registration
+      // even if bank data creation fails
+    }
+    
+    //send verification email
+    const {unhashedToken,hashedToken,tokenExpiry} = user.generateTemporaryToken()
+    user.emailVerificationToken = hashedToken
+    user.emailVerificationTokenExpiry = tokenExpiry
+    await user.save()
 
-  sendMail({
-      email,
-      subject : "Email Verification",
-      mailGenContent : emailVerificationMailGenToken(username,`${process.env.BASE_URL}/api/v1/users/verify/${unhashedToken}`)
-  })
+    sendMail({
+        email,
+        subject : "Email Verification",
+        mailGenContent : emailVerificationMailGenToken(username,`${process.env.BASE_URL}/api/v1/users/verify/${unhashedToken}`)
+    })
 
-
-
-  return res.status(200).json(
-      new ApiResponse(200,user,"User registered successfully")
-  )
-
-
+    return res.status(200).json(
+        new ApiResponse(200,user,"User registered successfully")
+    )
+  } catch (error) {
+    console.error("Registration error:", error);
+    return res.status(error.statusCode || 500).json(
+      new ApiError(error.statusCode || 500, error.message || "Something went wrong during registration")
+    );
+  }
 })
 
 exports.verifyEmail = asyncHandler(async (req,res) => {

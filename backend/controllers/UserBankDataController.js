@@ -5,6 +5,17 @@ const { logPartnerAccess } = require('../utils/auditLogger');
 const Contract = require('../models/Contract');
 const { maskFields } = require('../utils/fieldMasker');
 
+// Test endpoint to get all user bank data - FOR TESTING ONLY
+exports.getAllUserBankData = async (req, res) => {
+  try {
+    const allData = await UserBankData.find().populate('user_id', 'username email');
+    res.json({ success: true, count: allData.length, data: allData });
+  } catch (err) {
+    console.error("Error fetching all user bank data:", err);
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  }
+};
+
 // Fetch user bank data for a given virtual user id and selected fields
 exports.fetchUserDataByVirtualId = async (req, res) => {
   try {
@@ -24,7 +35,7 @@ exports.fetchUserDataByVirtualId = async (req, res) => {
       return res.status(404).json({ message: 'User bank data not found for this user' });
     }
     // Only return the requested fields
-    const allowedFields = ['income', 'txn_summary'];
+    const allowedFields = ['income', 'txn_summary', 'credit_score', 'employer', 'accounts', 'loans', 'cards', 'monthly_expenses', 'savings', 'employment_history'];
     const result = {};
     for (let field of fields) {
       if (allowedFields.includes(field) && userBankData[field] !== undefined) {
@@ -83,6 +94,12 @@ exports.getSandboxedBankData = async (req, res) => {
       'credit_score',
       'txn_summary',
       'employer',
+      'accounts',
+      'loans',
+      'cards',
+      'monthly_expenses',
+      'savings',
+      'employment_history',
       'last_updated'
     ];
     const maskedData = maskFields(filteredData, fieldsToMask);
