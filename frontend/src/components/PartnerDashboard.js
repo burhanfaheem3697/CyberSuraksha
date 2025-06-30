@@ -5,7 +5,7 @@ const PartnerDashboard = () => {
   const [partner, setPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [section, setSection] = useState('home');
+  const [section, setSection] = useState('home'); 
   const [consentForm, setConsentForm] = useState({
     virtualUserId: '',
     rawPurpose: '',
@@ -405,9 +405,9 @@ const PartnerDashboard = () => {
               <button type="submit" disabled={consentLoading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
                 {consentLoading ? 'Submitting...' : 'Create Consent Request'}
               </button>
-            </form>
             {consentMsg && <div style={{ color: 'green', marginTop: 16 }}>{consentMsg}</div>}
             {consentErr && <div style={{ color: 'red', marginTop: 16 }}>{consentErr}</div>}
+            </form>
           </div>
         );
       case 'loans':
@@ -557,21 +557,14 @@ const PartnerDashboard = () => {
             {partnerContractsErr && <div style={{ color: 'red' }}>{partnerContractsErr}</div>}
             {!partnerContractsLoading && !partnerContractsErr && partnerContracts.length === 0 && <div>No contracts found.</div>}
             {openDataRoomContractId ? (
-              <DataRoomView 
-                contractId={openDataRoomContractId} 
-                onClose={() => setOpenDataRoomContractId(null)} 
-              />
+            <DataRoomView 
+              contractId={openDataRoomContractId} 
+              onClose={() => setOpenDataRoomContractId(null)} 
+            />
             ) : (
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {partnerContracts.map((contract) => (
-                <li key={contract._id} style={{ 
-                  border: '1px solid #ddd', 
-                  borderRadius: 8, 
-                  margin: '12px 0', 
-                  padding: 20,
-                  background: '#f8f9fa',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }}>
+                <li key={contract._id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <h4 style={{ margin: 0, color: '#1976d2' }}>Contract {contract._id.slice(-8)}</h4>
                     <span style={{

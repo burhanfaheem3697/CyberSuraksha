@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import './DataRoomView.css';
 
 const socket = io('http://localhost:5000'); // Adjust as needed
 
@@ -185,49 +186,21 @@ const DataRoomView = ({ contractId, onClose }) => {
   };
 
   return (
-    <div style={{ 
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-      minHeight: '100vh',
-      padding: '20px',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 1000,
-      overflow: 'auto'
-    }}>
+    <div className="data-room-overlay">
       {/* Secure Data Room Header */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '24px',
-        marginBottom: '20px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '2px solid #e0e0e0'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h1 style={{ margin: 0, color: '#1976d2', fontSize: '28px' }}>
-            🔒 Secure Data Room
-          </h1>
-          <button 
-            onClick={handleClose}
-            style={{
-              background: '#e53935',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 20px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            🚪 Close Room
-          </button>
+      <div className="data-room-header">
+        <div className="data-room-title">
+          🔒 Secure Data Room
         </div>
-        
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <button 
+          onClick={handleClose}
+          className="data-room-close-btn"
+        >
+          🚪 Close Room
+        </button>
+      </div>
+      
+      <div className="data-room-status-badges">
         <span style={{
             padding: '8px 16px',
             borderRadius: '20px',
@@ -238,51 +211,35 @@ const DataRoomView = ({ contractId, onClose }) => {
         }}>
           Consent: {consentStatus}
         </span>
-          <span style={{
-            padding: '8px 16px',
-            borderRadius: '20px',
-            background: '#1976d2',
-            color: '#fff',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }}>
-            Contract: {contractId}
-          </span>
-        </div>
+        <span className="data-room-badge">
+          Contract: {contractId}
+        </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+      <div className="data-room-content-grid">
         {/* Contract Metadata Panel */}
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          border: '2px solid #e0e0e0'
-        }}>
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ margin: 0, color: '#1976d2', fontSize: '22px' }}>
-              📋 Contract Information
-            </h2>
+        <div className="data-room-card">
+          <div className="data-room-section-title">
+            📋 Contract Information
           </div>
           
           {contract && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                <strong>Bank:</strong>
-                <span>{typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id : contract.bankId}</span>
+            <div className="data-room-fields-list">
+              <div className="data-room-field-row">
+                <strong className="data-room-field-label">Bank:</strong>
+                <span className="data-room-field-value">{typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id : contract.bankId}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                <strong>Virtual User ID:</strong>
-                <span>{typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id : contract.virtualUserId}</span>
+              <div className="data-room-field-row">
+                <strong className="data-room-field-label">Virtual User ID:</strong>
+                <span className="data-room-field-value">{typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id : contract.virtualUserId}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                <strong>Purpose:</strong>
-                <span style={{ maxWidth: '200px', textAlign: 'right' }}>{contract.purpose}</span>
+              <div className="data-room-field-row">
+                <strong className="data-room-field-label">Purpose:</strong>
+                <span className="data-room-field-value" style={{ maxWidth: '200px', textAlign: 'right' }}>{contract.purpose}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                <strong>Status:</strong>
-                <span style={{
+              <div className="data-room-field-row">
+                <strong className="data-room-field-label">Status:</strong>
+                <span className="data-room-field-value" style={{
                   padding: '4px 8px',
                   borderRadius: '12px',
                   background: contract.status === 'ACTIVE' ? '#43a047' : '#fbc02d',
@@ -293,44 +250,24 @@ const DataRoomView = ({ contractId, onClose }) => {
                   {contract.status}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                <strong>Created:</strong>
-                <span>{new Date(contract.createdAt).toLocaleString()}</span>
+              <div className="data-room-field-row">
+                <strong className="data-room-field-label">Created:</strong>
+                <span className="data-room-field-value">{new Date(contract.createdAt).toLocaleString()}</span>
               </div>
-              <div style={{ padding: '8px 0' }}>
-                <strong>Allowed Fields:</strong>
-                <div style={{ 
-                  marginTop: '8px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px'
-                }}>
+              <div className="data-room-field-row">
+                <strong className="data-room-field-label">Allowed Fields:</strong>
+                <div className="data-room-fields-list">
                   {contract.allowedFields && contract.allowedFields.map((field, idx) => (
-                    <span key={idx} style={{
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      background: '#e3f2fd',
-                      color: '#1976d2',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}>
-                      {field}
+                    <span key={idx} className="data-room-field-value">
+                      {field}{idx < contract.allowedFields.length - 1 ? ', ' : ''}
                     </span>
                   ))}
                 </div>
               </div>
               {contract.documents && (
-                <div style={{ padding: '8px 0' }}>
-                  <strong>Documents:</strong>
-                  <pre style={{ 
-                    margin: '8px 0 0 0',
-                    background: '#f8f8f8',
-                    borderRadius: '4px',
-                    padding: '8px',
-                    fontSize: '12px',
-                    overflow: 'auto',
-                    maxHeight: '100px'
-                  }}>
+                <div className="data-room-field-row">
+                  <strong className="data-room-field-label">Documents:</strong>
+                  <pre className="data-room-field-value">
                     {JSON.stringify(contract.documents, null, 2)}
                   </pre>
                 </div>
@@ -338,78 +275,35 @@ const DataRoomView = ({ contractId, onClose }) => {
             </div>
           )}
           {!contract && (
-            <div style={{ 
-              textAlign: 'center',
-              color: '#6c757d',
-              padding: '20px',
-              fontSize: '16px'
-            }}>
+            <div className="data-room-empty">
               📋 Contract information not available
             </div>
           )}
         </div>
 
         {/* Sandboxed Data Panel */}
-        <div style={{
-          background: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          border: '2px solid #e0e0e0'
-        }}>
-          <div style={{ marginBottom: '20px' }}>
-            <h2 style={{ margin: 0, color: '#1976d2', fontSize: '22px' }}>
-              🔐 Sandboxed Data
-            </h2>
+        <div className="data-room-card">
+          <div className="data-room-section-title">
+            🔐 Sandboxed Data
           </div>
           
-          <div style={{
-            background: '#f8f9fa',
-            borderRadius: '8px',
-            padding: '16px',
-            border: '2px solid #e9ecef',
-            minHeight: '200px'
-          }}>
+          <div className="data-room-fields-list">
             {data && Object.keys(data).length > 0 ? (
               <div>
                 {Object.entries(data).map(([key, value]) => (
-                  <div key={key} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    padding: '8px 0',
-                    borderBottom: '1px solid #dee2e6'
-                  }}>
-                    <strong style={{ color: '#495057', minWidth: '120px' }}>{key}:</strong>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                  <div key={key} className="data-room-field-row">
+                    <strong className="data-room-field-label">{key}:</strong>
+                    <div className="data-room-field-value">
                       {typeof value === 'object' && value !== null ? (
-                        <pre style={{ 
-                          margin: 0,
-                          color: '#6c757d',
-                          background: '#f8f9fa',
-                          padding: '8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          width: '100%',
-                          overflow: 'auto'
-                        }}>
+                        <pre className="data-room-field-value">
                           {JSON.stringify(value, null, 2)}
                         </pre>
                       ) : (
-                        <span style={{ color: '#6c757d', flex: 1 }}>{String(value)}</span>
+                        <span className="data-room-field-value">{String(value)}</span>
                       )}
                       <button
                         onClick={() => copyField(key, typeof value === 'object' ? JSON.stringify(value, null, 2) : value)}
-                        style={{
-                          background: copiedFields.has(key) ? '#28a745' : '#007bff',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
-                          fontSize: '10px',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap'
-                        }}
+                        className={`data-room-copy-btn ${copiedFields.has(key) ? 'copied' : ''}`}
                       >
                         {copiedFields.has(key) ? '✅ Copied' : '📋 Copy'}
                       </button>
@@ -418,12 +312,7 @@ const DataRoomView = ({ contractId, onClose }) => {
                 ))}
               </div>
             ) : (
-              <div style={{ 
-                textAlign: 'center',
-                color: '#6c757d',
-                fontSize: '16px',
-                padding: '40px 20px'
-              }}>
+              <div className="data-room-empty">
                 📭 No data available in sandbox
               </div>
             )}
@@ -432,115 +321,44 @@ const DataRoomView = ({ contractId, onClose }) => {
       </div>
 
       {/* Access Logs Section */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        padding: '24px',
-        marginTop: '20px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        border: '2px solid #e0e0e0',
-        maxWidth: '1400px',
-        margin: '20px auto 0'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, color: '#1976d2', fontSize: '22px' }}>
+      <div className="data-room-logs-card">
+        <div className="data-room-logs-header">
+          <h2 className="data-room-section-title">
             📊 Access Logs
           </h2>
           <button 
             onClick={() => { setShowLogs(!showLogs); if (!showLogs) fetchLogs(); }}
-            style={{
-              background: showLogs ? '#6c757d' : '#28a745',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '10px 16px',
-              fontSize: '14px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
+            className={`data-room-logs-toggle-btn ${showLogs ? 'active' : ''}`}
           >
             {showLogs ? '👁️ Hide Logs' : '👁️ View Logs'}
-      </button>
+          </button>
         </div>
         
-      {showLogs && (
-          <div>
-            <h4 style={{ margin: '0 0 16px 0', color: '#495057' }}>Recent Activity Logs (Last 20)</h4>
+        {showLogs && (
+          <div className="data-room-log-list">
+            <h4 className="data-room-section-title">Recent Activity Logs (Last 20)</h4>
             {logs.length === 0 ? (
-              <div style={{ 
-                textAlign: 'center',
-                color: '#6c757d',
-                padding: '20px',
-                fontSize: '16px'
-              }}>
+              <div className="data-room-empty">
                 📝 No activity logs found
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {logs.map((log, idx) => (
-                  <div key={idx} style={{
-                    border: '1px solid #dee2e6',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    background: '#f8f9fa'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <strong style={{ color: '#495057' }}>Action:</strong>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        background: getActionColor(log.action),
-                        color: '#fff',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        {log.action}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <strong style={{ color: '#495057' }}>Timestamp:</strong>
-                      <span style={{ color: '#6c757d' }}>{new Date(log.timestamp).toLocaleString()}</span>
-                    </div>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {logs.map((log, idx) => (
+                  <li key={idx} className="data-room-log-item">
+                    <div><b>Action:</b> {log.action}</div>
+                    <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>
                     {log.context && log.context.details && (
-                      <div style={{ marginTop: '12px' }}>
-                        <strong style={{ color: '#495057' }}>Details:</strong>
-                        <pre style={{
-                          margin: '8px 0 0 0',
-                          background: '#fff',
-                          borderRadius: '4px',
-                          padding: '8px',
-                          fontSize: '12px',
-                          border: '1px solid #dee2e6',
-                          maxHeight: '100px',
-                          overflow: 'auto'
-                        }}>
-                          {JSON.stringify(log.context.details, null, 2)}
-                        </pre>
-                      </div>
+                      <div><b>Details:</b> <pre style={{ margin: 0 }}>{JSON.stringify(log.context.details, null, 2)}</pre></div>
                     )}
                     {log.dataSnapshot && (
-                      <div style={{ marginTop: '12px' }}>
-                        <strong style={{ color: '#495057' }}>Data Viewed:</strong>
-                        <pre style={{
-                          margin: '8px 0 0 0',
-                          background: '#fff',
-                          borderRadius: '4px',
-                          padding: '8px',
-                          fontSize: '12px',
-                          border: '1px solid #dee2e6',
-                          maxHeight: '100px',
-                          overflow: 'auto'
-                        }}>
-                          {JSON.stringify(log.dataSnapshot, null, 2)}
-                        </pre>
-                      </div>
+                      <div><b>Data Viewed:</b> <pre style={{ margin: 0 }}>{JSON.stringify(log.dataSnapshot, null, 2)}</pre></div>
                     )}
-                  </div>
-            ))}
-              </div>
+                  </li>
+                ))}
+              </ul>
             )}
-        </div>
-      )}
+          </div>
+        )}
       </div>
     </div>
   );

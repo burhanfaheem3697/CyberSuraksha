@@ -1,0 +1,206 @@
+/* DataRoomView.css - Consistent with UserDashboard.css glassy dark theme */
+
+.data-room-overlay {
+  background: linear-gradient(135deg, #181a2b 0%, #23234a 100%);
+  min-height: auto;
+  padding: 20px;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 1000;
+  overflow: overlay;
+  border-radius: 15px;
+  width:max-content;
+}
+
+.data-room-header {
+  background: rgba(30, 32, 60, 0.95);
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 24px #23234a33;
+  border: 1.5px solid #23234a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.data-room-title {
+  color: #00bfff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 1px;
+  text-shadow: 0 0 18px #00bfff44;
+}
+
+.data-room-close-btn {
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+.data-room-close-btn:hover {
+  background: #b71c1c;
+}
+
+.data-room-status-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.data-room-badge {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  color: #fff;
+  background: #1976d2;
+}
+
+.data-room-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.data-room-card {
+  background: rgba(30, 32, 60, 0.93);
+  border-radius: 18px;
+  margin-top: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 24px #23234a33;
+  border: 1.5px solid #23234a;
+}
+
+.data-room-section-title {
+  color: #00bfff;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.data-room-fields-list {
+  background: rgba(40, 44, 70, 0.85);
+  border-radius: 10px;
+  padding: 16px;
+  border: 1.5px solid #23234a;
+  min-height: 200px;
+}
+
+.data-room-field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px  ;
+  border-bottom: 1px solid #23234a;
+}
+.data-room-field-label {
+  color: #00bfff;
+  min-width: 120px;
+  font-weight: 600;
+}
+.data-room-field-value {
+  color: #fff;
+  word-break: break-all;
+}
+.data-room-copy-btn {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.2s;
+}
+.data-room-copy-btn.copied {
+  background: #28a745;
+}
+.data-room-copy-btn:hover {
+  background: #00bfff;
+}
+
+.data-room-empty {
+  text-align: center;
+  color: #a0a0a0;
+  font-size: 1.1rem;
+  padding: 40px 20px;
+}
+
+.data-room-logs-card {
+  background: rgba(30, 32, 60, 0.93);
+  border-radius: 18px;
+  padding: 24px;
+  margin-top: 20px;
+  box-shadow: 0 4px 24px #23234a33;
+  border: 1.5px solid #23234a;
+  max-width: 1400px;
+  margin: 20px auto 0;
+}
+
+.data-room-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.data-room-logs-toggle-btn {
+  background: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+.data-room-logs-toggle-btn.active {
+  background: #6c757d;
+}
+.data-room-logs-toggle-btn:hover {
+  background: #00bfff;
+}
+
+.data-room-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.data-room-log-item {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin: 12px 0;
+  padding: 16px;
+  background: #fff;
+  color: #23234a;
+  font-size: 1rem;
+}
+.data-room-log-action {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #fff;
+  margin-left: 8px;
+}
+.data-room-log-details,
+.data-room-log-data {
+  background: #181a2b;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 0.95rem;
+  border: 1px solid #23234a;
+  margin-top: 8px;
+  color: #a0a0a0;
+  max-height: 100px;
+  overflow: auto;
+} 

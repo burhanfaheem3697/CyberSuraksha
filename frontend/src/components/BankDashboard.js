@@ -187,7 +187,7 @@ const BankDashboard = () => {
       case 'upload':
         return (
           <div style={{ marginTop: 32 }}>
-            <h3>Upload Data</h3>
+            <h3>Contract Form</h3>
             <form onSubmit={handleUploadSubmit} style={{ display: 'flex', flexDirection: 'column', width: 350, gap: 14 }}>
               <input
                 name="consentId"
@@ -270,15 +270,15 @@ const BankDashboard = () => {
               <button type="submit" disabled={uploadLoading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
                 {uploadLoading ? 'Creating Contract...' : 'Create Contract'}
               </button>
-            </form>
             {uploadMsg && <div style={{ color: 'green', marginTop: 16 }}>{uploadMsg}</div>}
             {uploadErr && <div style={{ color: 'red', marginTop: 16 }}>{uploadErr}</div>}
+            </form>
           </div>
         );
       case 'approved':
         return (
           <div style={{ marginTop: 32 }}>
-            <h3>View Approved Consents</h3>
+            <h3>Approved Consents</h3>
             {approvedLoading && <div>Loading...</div>}
             {approvedErr && <div style={{ color: 'red' }}>{approvedErr}</div>}
             {!approvedLoading && !approvedErr && approvedConsents.length === 0 && <div>No approved consents found.</div>}
@@ -373,7 +373,7 @@ const BankDashboard = () => {
           <div className="dashboard-email">{bank?.email}</div>
         </div>
         <div className="dashboard-menu">
-          <button className={`dashboard-menu-btn${section === 'upload' ? ' active' : ''}`} onClick={() => setSection('upload')}>Upload Data</button>
+          <button className={`dashboard-menu-btn${section === 'upload' ? ' active' : ''}`} onClick={() => setSection('upload')}>Create Contract</button>
           <button className={`dashboard-menu-btn${section === 'approved' ? ' active' : ''}`} onClick={() => setSection('approved')}>View Approved Consents</button>
           <button className={`dashboard-menu-btn${section === 'auditlogs' ? ' active' : ''}`} onClick={() => setSection('auditlogs')}>View Bank Audit Logs</button>
           <button className={`dashboard-menu-btn${section === 'contracts' ? ' active' : ''}`} onClick={() => setSection('contracts')}>View All Contracts</button>

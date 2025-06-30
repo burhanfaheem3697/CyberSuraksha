@@ -160,10 +160,9 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
   font-weight: 600;
-  font-size: 1.1rem;
   border: none;
   border-radius: 10px;
-  padding: 12px 0;
+  padding: 5px 8px;
   cursor: pointer;
   box-shadow: 0 4px 18px rgba(102,126,234,0.18);
   transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
@@ -189,7 +188,7 @@
   padding: 0;
 }
 .dashboard-section li {
-  border: 1px solid #23234a;
+  border: 1px solid #ddd;
   border-radius: 10px;
   margin: 12px 0;
   padding: 18px;
@@ -198,7 +197,7 @@
   box-shadow: 0 2px 10px #23234a22;
 }
 .dashboard-section h3 {
-  color: #00bfff;
+  color: #00bfff; 
   font-size: 1.3rem;
   margin-bottom: 18px;
   font-weight: 700;
@@ -265,4 +264,86 @@
   width: 18px;
   height: 18px;
   margin-right: 8px;
+}
+
+/* Partner Contracts Section */
+.partner-contracts-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.partner-contract-card {
+  background: rgba(30, 32, 60, 0.93);
+  border-radius: 18px;
+  margin: 18px 0;
+  padding: 28px 28px 20px 28px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  border: 1.5px solid #23234a;
+  color: #fff;
+  transition: box-shadow 0.2s;
+}
+.partner-contract-card:hover {
+  box-shadow: 0 12px 36px rgba(0,191,255,0.18), 0 1.5px 0 #00bfff44;
+}
+.partner-contract-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.partner-contract-title {
+  margin: 0;
+  color: #00bfff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.partner-contract-status {
+  padding: 4px 16px;
+  border-radius: 12px;
+  background: #43a047;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: bold;
+  box-shadow: 0 2px 8px #43a04733;
+}
+.partner-contract-status.inactive {
+  background: #fbc02d;
+  color: #23234a;
+}
+.partner-contract-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.partner-contract-fields {
+  margin-bottom: 18px;
+}
+.partner-contract-field-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #e3f2fd;
+  color: #1976d2;
+  font-size: 0.95rem;
+  font-weight: bold;
+  margin-right: 6px;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+.partner-contract-view-btn {
+  background: linear-gradient(135deg, #1976d2 0%, #00bfff 100%);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 10px #1976d233;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.partner-contract-view-btn:hover {
+  background: linear-gradient(135deg, #00bfff 0%, #1976d2 100%);
+  box-shadow: 0 4px 18px #00bfff55;
 } 
