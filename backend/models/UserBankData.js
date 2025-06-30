@@ -51,7 +51,7 @@ const UserBankDataSchema = new mongoose.Schema({
   }, // Primary key, privacy-respecting
   income: { type: Number }, // Monthly/annual income
   credit_score: { type: Number }, // Simulated CIBIL score
-  txn_summary: { 
+  transaction_summary: { 
     type: mongoose.Schema.Types.Mixed,
     default: {}
   }, // Aggregated transaction data (JSON)

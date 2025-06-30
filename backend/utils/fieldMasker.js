@@ -14,7 +14,7 @@ function maskCreditScore(value) {
 
 function maskTxnSummary(value) {
   if (!value || typeof value !== 'object') return value;
-  // Mask all values in txn_summary using income masking logic
+  // Mask all values in transaction_summary using income masking logic
   const masked = {};
   for (const key in value) {
     if (Object.prototype.hasOwnProperty.call(value, key)) {
@@ -207,7 +207,7 @@ function maskEmploymentHistory(history) {
 const fieldMaskers = {
   income: maskIncome,
   credit_score: maskCreditScore,
-  txn_summary: maskTxnSummary,
+  transaction_summary: maskTxnSummary,
   employer: maskEmployer,
   last_updated: maskLastUpdated,
   aadhaar: maskAadhaar,

@@ -35,7 +35,7 @@ exports.fetchUserDataByVirtualId = async (req, res) => {
       return res.status(404).json({ message: 'User bank data not found for this user' });
     }
     // Only return the requested fields
-    const allowedFields = ['income', 'txn_summary', 'credit_score', 'employer', 'accounts', 'loans', 'cards', 'monthly_expenses', 'savings', 'employment_history'];
+    const allowedFields = ['income', 'transaction_summary', 'credit_score', 'employer', 'accounts', 'loans', 'cards', 'monthly_expenses', 'savings', 'employment_history'];
     const result = {};
     for (let field of fields) {
       if (allowedFields.includes(field) && userBankData[field] !== undefined) {
@@ -92,7 +92,7 @@ exports.getSandboxedBankData = async (req, res) => {
       'address',
       'income',
       'credit_score',
-      'txn_summary',
+      'transaction_summary',
       'employer',
       'accounts',
       'loans',

@@ -8,7 +8,7 @@ const rules = [
     purpose: "loan",
     jurisdiction: ["IN"],
     regulatoryRefs: ["DPDP-Section-7", "RBI-IT-2.1"],
-    allowedFields: ["income", "credit_score", "transaction_summary"],
+    allowedFields: ["income", "credit_score", "transaction_summary","loans"],
     deniedFields: ["aadhaar_number", "biometric_data"],
     retentionDays: 7,
     minTrustScore: 7.5,

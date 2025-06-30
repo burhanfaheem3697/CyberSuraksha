@@ -243,11 +243,74 @@ const BankDashboard = () => {
                 <label>
                   <input
                     type="checkbox"
+                    value="credit_score"
+                    checked={selectedFields.includes('credit_score')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Credit Score
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
                     value="txn_summary"
                     checked={selectedFields.includes('txn_summary')}
                     onChange={handleFieldCheckbox}
                   />{' '}
                   Transaction Summary
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    value="monthly_expenses"
+                    checked={selectedFields.includes('monthly_expenses')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Monthly Expenses
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    value="loans"
+                    checked={selectedFields.includes('loans')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Loans
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    value="employment_history"
+                    checked={selectedFields.includes('employment_history')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Employment History
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    value="savings"
+                    checked={selectedFields.includes('savings')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Savings
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    value="accounts"
+                    checked={selectedFields.includes('accounts')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Accounts
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    value="employer"
+                    checked={selectedFields.includes('employer')}
+                    onChange={handleFieldCheckbox}
+                  />{' '}
+                  Employer
                 </label>
                 <button
                   type="button"
