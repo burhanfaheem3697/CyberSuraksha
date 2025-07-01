@@ -252,8 +252,8 @@ const BankDashboard = () => {
                 <label>
                   <input
                     type="checkbox"
-                    value="txn_summary"
-                    checked={selectedFields.includes('txn_summary')}
+                    value="transaction_summary"
+                    checked={selectedFields.includes('transaction_summary')}
                     onChange={handleFieldCheckbox}
                   />{' '}
                   Transaction Summary

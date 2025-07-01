@@ -16,7 +16,7 @@ async function testBankDataCreation() {
       user_id: testUserId,
       income: 75000,
       credit_score: 750,
-      txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
+      transaction_summary: { groceries: 8000, emi: 12000, bills: 4000 },
       accounts: [
         {
           account_type: 'Savings',

@@ -10,6 +10,19 @@
   overflow: overlay;
   border-radius: 15px;
   width:max-content;
+  /* Prevent text selection globally in the data room */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Allow selection only for copy buttons */
+.data-room-copy-btn {
+  user-select: auto;
+  -webkit-user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: auto;
 }
 
 .data-room-header {
@@ -110,6 +123,8 @@
 .data-room-field-value {
   color: #fff;
   word-break: break-all;
+  /* Prevent copying via right-click context menu */
+  -webkit-touch-callout: none;
 }
 .data-room-copy-btn {
   background: #1976d2;
@@ -203,4 +218,18 @@
   color: #a0a0a0;
   max-height: 100px;
   overflow: auto;
+}
+
+/* Style for secure content that shouldn't be copied except through buttons */
+.secure-content {
+  position: relative;
+}
+
+/* Prevent drag operations on sensitive data */
+[draggable="false"] {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
 } 

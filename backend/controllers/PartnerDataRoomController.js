@@ -75,7 +75,7 @@ try {
     const fieldsToMask = [
       'income',
       'credit_score',
-      'txn_summary',
+      'transaction_summary',
       'employer',
       'last_updated'
     ];
@@ -147,8 +147,36 @@ exports.logInteraction = async (req, res) => {
 
     const virtualId = contract.virtualUserId;
 
-    // Log the interaction
-    await logDataRoomInteraction(partnerId, virtualId, contractId, action, details, Date.now());
+    // Enhanced logging for copy actions and unauthorized attempts
+    const enhancedDetails = { ...details };
+    
+    // Add timestamp if not provided
+    if (!enhancedDetails.timestamp) {
+      enhancedDetails.timestamp = new Date().toISOString();
+    }
+    
+    // Add metadata for different action types
+    switch (action) {
+      case 'COPIED_FIELD':
+        enhancedDetails.accessMethod = 'AUTHORIZED_COPY_BUTTON';
+        enhancedDetails.fieldType = details.fieldName ? details.fieldName : 'unknown';
+        break;
+      case 'ATTEMPTED_UNAUTHORIZED_COPY':
+        enhancedDetails.accessMethod = 'UNAUTHORIZED_ATTEMPT';
+        enhancedDetails.securityEvent = true;
+        enhancedDetails.severity = 'MEDIUM';
+        break;
+      case 'ATTEMPTED_DRAG':
+        enhancedDetails.accessMethod = 'UNAUTHORIZED_DRAG';
+        enhancedDetails.securityEvent = true;
+        enhancedDetails.severity = 'LOW';
+        break;
+      default:
+        enhancedDetails.accessMethod = 'STANDARD';
+    }
+
+    // Log the interaction with enhanced details
+    await logDataRoomInteraction(partnerId, virtualId, contractId, action, enhancedDetails, Date.now());
 
     res.json({ message: 'Interaction logged successfully' });
   } catch (err) {

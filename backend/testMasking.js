@@ -5,7 +5,7 @@ const sampleUserBankData = {
   user_id: "5f8d0a3b9d3e7c1e4c9a7b6d",
   income: 75000,
   credit_score: 750,
-  txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
+  transaction_summary: { groceries: 8000, emi: 12000, bills: 4000 },
   accounts: [
     {
       account_type: 'Savings',
@@ -86,7 +86,7 @@ const sampleUserBankData = {
 const fieldsToMask = [
   'income',
   'credit_score',
-  'txn_summary',
+  'transaction_summary',
   'employer',
   'accounts',
   'loans',

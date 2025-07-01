@@ -34,7 +34,7 @@ exports.registerUser = asyncHandler(async (req,res) => {
         user_id: user._id,
         income: 50000 + Math.floor(Math.random() * 50000),
         credit_score: 700 + Math.floor(Math.random() * 100),
-        txn_summary: { groceries: 8000, emi: 12000, bills: 4000 },
+        transaction_summary: { groceries: 8000, emi: 12000, bills: 4000 },
         accounts: [
           {
             account_type: 'Savings',

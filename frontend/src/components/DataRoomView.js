@@ -13,6 +13,7 @@ const DataRoomView = ({ contractId, onClose }) => {
   const [logs, setLogs] = useState([]);
   const [showLogs, setShowLogs] = useState(false);
   const [copiedFields, setCopiedFields] = useState(new Set());
+  const [lastAction, setLastAction] = useState(null);
 
   // Function to log interactions
   const logInteraction = useCallback(async (action, details) => {
@@ -25,6 +26,9 @@ const DataRoomView = ({ contractId, onClose }) => {
         credentials: 'include',
         body: JSON.stringify({ action, details })
       });
+      
+      // Set the last action timestamp to trigger logs refresh
+      setLastAction(Date.now());
     } catch (err) {
       console.error('Failed to log interaction:', err);
     }
@@ -39,6 +43,51 @@ const DataRoomView = ({ contractId, onClose }) => {
       });
     }
   }, [contractId, logInteraction]);
+
+  // Event handlers to prevent copying
+  useEffect(() => {
+    // Function to prevent copy, cut, paste operations
+    const preventCopyPaste = (e) => {
+      // Allow copy events originating from the copy buttons
+      if (e.target.classList.contains('data-room-copy-btn')) {
+        return true;
+      }
+      
+      e.preventDefault();
+      logInteraction('ATTEMPTED_UNAUTHORIZED_COPY', {
+        description: 'Partner attempted to copy data through browser shortcuts or context menu',
+        timestamp: new Date().toISOString(),
+        element: e.target.tagName
+      });
+      return false;
+    };
+
+    // Function to prevent drag operations
+    const preventDrag = (e) => {
+      e.preventDefault();
+      logInteraction('ATTEMPTED_DRAG', {
+        description: 'Partner attempted to drag content',
+        timestamp: new Date().toISOString()
+      });
+      return false;
+    };
+
+    // Add event listeners to prevent copying
+    document.addEventListener('copy', preventCopyPaste);
+    document.addEventListener('cut', preventCopyPaste);
+    document.addEventListener('paste', preventCopyPaste);
+    document.addEventListener('dragstart', preventDrag);
+    document.addEventListener('contextmenu', preventCopyPaste);
+    
+    // Clean up event listeners when component unmounts
+    return () => {
+      document.removeEventListener('copy', preventCopyPaste);
+      document.removeEventListener('cut', preventCopyPaste);
+      document.removeEventListener('paste', preventCopyPaste);
+      document.removeEventListener('dragstart', preventDrag);
+      document.removeEventListener('contextmenu', preventCopyPaste);
+    };
+  }, [logInteraction]);
 
   useEffect(() => {
     setLoading(true);
@@ -72,6 +121,19 @@ const DataRoomView = ({ contractId, onClose }) => {
       });
   }, [contractId, logInteraction]);
 
+  // Auto-refresh logs when visible and after actions
+  useEffect(() => {
+    if (showLogs) {
+      fetchLogs();
+      
+      // Set up an interval to refresh logs every 5 seconds while they're visible
+      const intervalId = setInterval(fetchLogs, 5000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [showLogs, lastAction, contractId]);
+
+  // Socket connection for consent updates
   useEffect(() => {
     socket.emit('join_contract_room', contractId);
     socket.on('consent_revoked', (msg) => {
@@ -80,7 +142,7 @@ const DataRoomView = ({ contractId, onClose }) => {
         onClose();
       }
     });
-    socket.on('connect_error', (err) => {
+    socket.off('connect_error', (err) => {
       console.error('Socket.IO connection error:', err);
     });
     return () => {
@@ -90,7 +152,7 @@ const DataRoomView = ({ contractId, onClose }) => {
     };
   }, [contractId, onClose]);
 
-  const fetchLogs = () => {
+  const fetchLogs = useCallback(() => {
     fetch(`http://localhost:5000/partner/interaction-logs/${contractId}`, {
       credentials: 'include'
     })
@@ -105,7 +167,7 @@ const DataRoomView = ({ contractId, onClose }) => {
         setLogs([]);
         console.error('DataRoomView logs fetch error:', err);
       });
-  };
+  }, [contractId]);
 
   // Handle field copying
   const copyField = (fieldName, fieldValue) => {
@@ -143,6 +205,15 @@ const DataRoomView = ({ contractId, onClose }) => {
   useEffect(() => {
     window.dataRoomEntryTime = Date.now();
   }, []);
+
+  // Toggle logs visibility and fetch logs when shown
+  const toggleLogs = () => {
+    const newShowLogs = !showLogs;
+    setShowLogs(newShowLogs);
+    if (newShowLogs) {
+      fetchLogs();
+    }
+  };
 
   if (loading) return (
     <div style={{ 
@@ -186,7 +257,7 @@ const DataRoomView = ({ contractId, onClose }) => {
   };
 
   return (
-    <div className="data-room-overlay">
+    <div className="data-room-overlay" onCopy={(e) => e.preventDefault()}>
       {/* Secure Data Room Header */}
       <div className="data-room-header">
         <div className="data-room-title">
@@ -227,11 +298,11 @@ const DataRoomView = ({ contractId, onClose }) => {
             <div className="data-room-fields-list">
               <div className="data-room-field-row">
                 <strong className="data-room-field-label">Bank:</strong>
-                <span className="data-room-field-value">{typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id : contract.bankId}</span>
+                <span className="data-room-field-value" draggable="false">{typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id : contract.bankId}</span>
               </div>
               <div className="data-room-field-row">
                 <strong className="data-room-field-label">Virtual User ID:</strong>
-                <span className="data-room-field-value">{typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id : contract.virtualUserId}</span>
+                <span className="data-room-field-value" draggable="false">{typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id : contract.virtualUserId}</span>
               </div>
               <div className="data-room-field-row">
                 <strong className="data-room-field-label">Purpose:</strong>
@@ -295,11 +366,11 @@ const DataRoomView = ({ contractId, onClose }) => {
                     <strong className="data-room-field-label">{key}:</strong>
                     <div className="data-room-field-value">
                       {typeof value === 'object' && value !== null ? (
-                        <pre className="data-room-field-value">
+                        <pre className="data-room-field-value" draggable="false">
                           {JSON.stringify(value, null, 2)}
                         </pre>
                       ) : (
-                        <span className="data-room-field-value">{String(value)}</span>
+                        <span className="data-room-field-value" draggable="false">{String(value)}</span>
                       )}
                       <button
                         onClick={() => copyField(key, typeof value === 'object' ? JSON.stringify(value, null, 2) : value)}
@@ -327,7 +398,7 @@ const DataRoomView = ({ contractId, onClose }) => {
             📊 Access Logs
           </h2>
           <button 
-            onClick={() => { setShowLogs(!showLogs); if (!showLogs) fetchLogs(); }}
+            onClick={toggleLogs}
             className={`data-room-logs-toggle-btn ${showLogs ? 'active' : ''}`}
           >
             {showLogs ? '👁️ Hide Logs' : '👁️ View Logs'}
