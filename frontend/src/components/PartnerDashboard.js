@@ -20,6 +20,7 @@ const PartnerDashboard = () => {
   const [consentLoading, setConsentLoading] = useState(false);
   const [consentMsg, setConsentMsg] = useState(null);
   const [consentErr, setConsentErr] = useState(null);
+  const [consentBlockchain, setConsentBlockchain] = useState(null);
 
   // Loan requests state
   const [loans, setLoans] = useState([]);
@@ -53,6 +54,9 @@ const PartnerDashboard = () => {
 
   // Data room state
   const [openDataRoomContractId, setOpenDataRoomContractId] = useState(null);
+
+  // Add state to track verification results for each consent
+  const [verificationResults, setVerificationResults] = useState({});
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -200,6 +204,7 @@ const PartnerDashboard = () => {
     setConsentLoading(true);
     setConsentMsg(null);
     setConsentErr(null);
+    setConsentBlockchain(null);
     try {
       const res = await fetch('http://localhost:5000/consent/create-consent-request', {
         method: 'POST',
@@ -213,7 +218,31 @@ const PartnerDashboard = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        setConsentMsg('Consent request created successfully!');
+        // Format success message with blockchain info if available
+        let successMsg = 'Consent request created successfully!';
+        
+        if (data.blockchain) {
+          if (data.blockchain.status === 'confirmed') {
+            successMsg += ' Recorded on blockchain.';
+            
+            // Add blockchain explorer link if available
+            if (data.blockchain.explorerUrl) {
+              const txHash = data.blockchain.txHash;
+              const shortTxHash = txHash.length > 10 ? 
+                `${txHash.substring(0, 6)}...${txHash.substring(txHash.length - 4)}` : 
+                txHash;
+                
+              successMsg += ` TX: ${shortTxHash}`;
+            }
+          } else if (data.blockchain.status === 'error') {
+            successMsg += ' (Blockchain recording failed but request is saved in the system)';
+          }
+        }
+        
+        setConsentMsg(successMsg);
+        setConsentBlockchain(data.blockchain);
+        
+        // Reset form
         setConsentForm({
           virtualUserId: '',
           rawPurpose: '',
@@ -229,7 +258,8 @@ const PartnerDashboard = () => {
         setConsentErr(data.message || 'Failed to create consent request');
       }
     } catch (err) {
-      setConsentErr('Network error');
+      console.error("Error submitting consent request:", err);
+      setConsentErr('Network error: ' + (err.message || 'Failed to connect to server'));
     }
     setConsentLoading(false);
   };
@@ -315,11 +345,21 @@ const PartnerDashboard = () => {
   const handleLogout = () => {
     // Call logout endpoint to clear server-side session
     fetch('http://localhost:5000/partner/logout', {
-      credentials: 'include'
-    }).finally(() => {
-      // Redirect to partner login page
-      window.location.href = '/partner';
-    });
+      credentials: 'include',
+    })
+      .then(() => {
+        // Clear partnerToken and userToken cookies
+        document.cookie = 'partnerToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'userToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        // Redirect to login page
+        window.location.href = '/partner';
+      })
+      .catch(() => {
+        // Still clear cookies and redirect even if fetch fails
+        document.cookie = 'partnerToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'userToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        window.location.href = '/partner';
+      });
   };
 
   const renderSection = () => {
@@ -405,8 +445,49 @@ const PartnerDashboard = () => {
               <button type="submit" disabled={consentLoading} style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
                 {consentLoading ? 'Submitting...' : 'Create Consent Request'}
               </button>
-            {consentMsg && <div style={{ color: 'green', marginTop: 16 }}>{consentMsg}</div>}
-            {consentErr && <div style={{ color: 'red', marginTop: 16 }}>{consentErr}</div>}
+            {consentLoading && <div style={{ marginTop: 16 }}>Processing...</div>}
+            {consentMsg && (
+              <div style={{ 
+                marginTop: 16, 
+                padding: '12px', 
+                backgroundColor: '#e8f5e9', 
+                color: '#2e7d32',
+                borderRadius: '4px'
+              }}>
+                <div><strong>✓ Success:</strong> {consentMsg}</div>
+                
+                {/* If we have blockchain data from the response */}
+                {consentBlockchain && consentBlockchain.txHash && !consentBlockchain.txHash.startsWith('blockchain-') && (
+                  <div style={{ marginTop: 8 }}>
+                    <a 
+                      href={consentBlockchain.explorerUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ 
+                        color: '#1976d2',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        marginTop: '8px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      View on blockchain explorer →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+            {consentErr && (
+              <div style={{ 
+                marginTop: 16, 
+                padding: '12px', 
+                backgroundColor: '#ffebee', 
+                color: '#c62828',
+                borderRadius: '4px' 
+              }}>
+                <strong>✗ Error:</strong> {consentErr}
+              </div>
+            )}
             </form>
           </div>
         );
@@ -452,6 +533,65 @@ const PartnerDashboard = () => {
                   <div><b>Fields:</b> {consent.dataFields?.join(', ')}</div>
                   <div><b>Status:</b> {consent.status}</div>
                   <div><b>Approved At:</b> {consent.approvedAt ? new Date(consent.approvedAt).toLocaleString() : '-'}</div>
+                  {/* Blockchain Proof for Data Hash */}
+                  {consent.blockchain?.documentHash && (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <b>Data Hash:</b>
+                      <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{consent.blockchain.documentHash}</span>
+                      {/* Visual check/cross with tooltips */}
+                      {verificationResults[consent._id] === true && (
+                        <span
+                          title="This data hash is verifiable on-chain. The data has been registered and proven on the blockchain."
+                          style={{ color: 'green', fontSize: 18, cursor: 'help' }}
+                        >✔️</span>
+                      )}
+                      {verificationResults[consent._id] === false && (
+                        <span
+                          title="This data hash is NOT found on-chain. The data is not registered or does not match the blockchain record."
+                          style={{ color: 'red', fontSize: 18, cursor: 'help' }}
+                        >❌</span>
+                      )}
+                    </div>
+                  )}
+                  {consent.blockchain?.documentTxHash && (
+                    <div style={{ marginTop: 4 }}>
+                      <a
+                        href={consent.blockchain.documentExplorerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#1976d2', textDecoration: 'none', fontSize: 13 }}
+                      >
+                        View Data Hash on Blockchain Explorer ↗
+                      </a>
+                    </div>
+                  )}
+                  {consent.blockchain?.documentHash && (
+                    <button
+                      style={{ marginTop: 6, fontSize: 12, padding: '4px 10px' }}
+                      onClick={async () => {
+                        const res = await fetch('http://localhost:5000/consent/verify-hash', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ data: {
+                            virtualUserId: consent.virtualUserId,
+                            partnerId: consent.partnerId?._id || consent.partnerId,
+                            purpose: consent.purpose,
+                            dataFields: consent.dataFields,
+                            duration: consent.duration,
+                            dataResidency: consent.dataResidency,
+                            crossBorder: consent.crossBorder,
+                            quantumSafe: consent.quantumSafe,
+                            anonymization: consent.anonymization,
+                            approvedAt: consent.approvedAt,
+                          } }),
+                        });
+                        const result = await res.json();
+                        setVerificationResults(prev => ({ ...prev, [consent._id]: !!result.verified }));
+                      }}
+                    >
+                      Verify Data on Blockchain
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -560,6 +700,7 @@ const PartnerDashboard = () => {
             <DataRoomView 
               contractId={openDataRoomContractId} 
               onClose={() => setOpenDataRoomContractId(null)} 
+              role="partner"
             />
             ) : (
             <ul style={{ listStyle: 'none', padding: 0 }}>

@@ -22,7 +22,10 @@ const ConsentSchema = new mongoose.Schema({
   approvedAt: { type: Date },
   expiresAt: { type: Date },
   revokedAt: { type: Date },
-  revokeReason: { type: String }
+  revokeReason: { type: String },
+  txHash: {type: String,required: false},
+  documentHash: { type: String },
+  documentTxHash: { type: String }
 });
 
 module.exports = mongoose.model('Consent', ConsentSchema);

@@ -102,14 +102,16 @@ try {
       contract: req.contract 
     });
 
-    // Audit log
-    await logDataRoomAccess(partnerId, objectId, contractId, masked, Date.now());
-    
-    // Log data room entry
-    await logDataRoomInteraction(partnerId, objectId, contractId, 'ENTERED_DATA_ROOM', {
-      description: 'Partner entered the data room',
-      dataFields: Object.keys(masked)
-    }, Date.now());
+    // Only log if partnerId is present (i.e., request is from a partner)
+    if (partnerId) {
+      // Audit log
+      await logDataRoomAccess(partnerId, objectId, contractId, masked, Date.now());
+      // Log data room entry
+      await logDataRoomInteraction(partnerId, objectId, contractId, 'ENTERED_DATA_ROOM', {
+        description: 'Partner entered the data room',
+        dataFields: Object.keys(masked)
+      }, Date.now());
+    }
   } catch (err) {
     console.error('[getDataRoom] Unexpected error:', err);
     res.status(500).json({ error: 'Error fetching data room data', details: err.message });

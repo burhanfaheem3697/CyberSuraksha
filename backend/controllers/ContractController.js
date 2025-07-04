@@ -99,4 +99,22 @@ exports.viewAllContractsForPartner = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
+};
+
+// View all contracts for the authenticated user
+exports.viewAllContractsForUser = async (req, res) => {
+  try {
+    const userId = req.user.id; // req.user is set by auth middleware
+    // Fetch the user's virtualIds from the User model
+    const user = await require('../models/User').findById(userId).select('virtualIds');
+    if (!user) {
+      return res.status(404).json({ message: `User not found ${userId}` });
+    }
+    const contractsForUser = await Contract.find({ virtualUserId: { $in: user.virtualIds } })
+      .sort({ createdAt: -1 })
+      .populate('bankId', 'name');
+    res.json({ contracts: contractsForUser });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 }; 

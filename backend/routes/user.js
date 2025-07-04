@@ -24,5 +24,10 @@ router.get('/resendEmail',authMiddleware,UserController.resendVerificationEmail)
 
 router.get('/refresh',UserController.refreshAccessToken)
 
+// GET /user/data-room/:contractId
+router.get('/data-room/:contractId', authMiddleware, UserController.getUserDataRoom);
+
+// GET /user/data-room-logs/:contractId
+router.get('/data-room-logs/:contractId', authMiddleware, UserController.getUserDataRoomLogs);
 
 module.exports = router; 

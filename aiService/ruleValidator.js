@@ -15,9 +15,11 @@ exports.validateWithRules = async (consentRequest) => {
   } = consentRequest;
 
   const rule = await PolicyRule.findOne({ purpose });
+  console.log(rule);
   if (!rule) return { approved: false, source: "RULE", reason: "No policy defined for this purpose" };
 
   const partner = await Partner.findById(partnerId);
+  console.log(partner);
   if (!partner) return { approved: false, source: "RULE", reason: "Invalid partner ID" };
 
   // Jurisdiction check

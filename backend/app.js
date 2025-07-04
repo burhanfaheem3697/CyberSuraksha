@@ -6,7 +6,15 @@ const cookieParser = require('cookie-parser');
 const http = require('http');
 const socketIo = require('socket.io');
 
+// Load backend .env first (default)
 dotenv.config();
+// Load blockchain .env (from blockChain/.env)
+dotenv.config({ path: require('path').resolve(__dirname, '../blockChain/.env') });
+
+// Debug log to confirm blockchain env variables are loaded
+console.log('BLOCKCHAIN_RPC_URL:', process.env.RPC_URL);
+console.log('BLOCKCHAIN_PRIVATE_KEY:', process.env.PRIVATE_KEY ? 'present' : 'missing');
+console.log('DOCUMENT_VERIFIER_CONTRACT:', process.env.DOCUMENT_VERIFIER_CONTRACT);
 
 const PORT = process.env.PORT || 5000;
 

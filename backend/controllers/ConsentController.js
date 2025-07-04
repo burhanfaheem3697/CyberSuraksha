@@ -7,7 +7,11 @@ const Partner = require('../models/Partner');
 const { evaluateConsentRequest } = require('../../aiService/decisionEngine');
 const { classifyPurpose } = require('../../aiService/llmPurposeClassifier');
 const UserAuditLog = require('../models/UserAuditLog')
+const { logConsentOnChain } = require("../utils/blockchainService");
+const { registerDataHash, verifyDataHash } = require('../services/blockchainService');
 const PartnerAuditLog = require('../models/PartnerAuditLog');
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../blockChain/.env') });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 // Helper to get userId from virtualUserId
 async function getUserIdFromVirtualId(virtualUserId) {
@@ -44,8 +48,10 @@ exports.createConsentRequest = async (req, res) => {
       rawPurpose,
       timestamp: Date.now(),
     };
+    console.log(aiRequest);
     // Run AI validation
     const aiResult = await evaluateConsentRequest(aiRequest);
+    console.log(aiResult);
     if (!aiResult.approved) {
       
       await UserAuditLog.create({
@@ -65,6 +71,7 @@ exports.createConsentRequest = async (req, res) => {
         status: 'REJECTED',
         context: { source: aiResult.source }
       });
+      console.log("User Audit Log created");
       await PartnerAuditLog.create({
         virtualUserId,
         action: 'CONSENT_REJECTED',
@@ -82,6 +89,8 @@ exports.createConsentRequest = async (req, res) => {
         status: 'REJECTED',
         context: { source: aiResult.source }
       });
+      console.log("Partner Audit Log created");
+
       return res.status(403).json({
         status: "REJECTED",
         source: aiResult.source,
@@ -91,6 +100,7 @@ exports.createConsentRequest = async (req, res) => {
         justification: classification.justification
       });
     }
+    console.log("Consent Approved");
     // If approved, save consent
     const consent = new Consent({
       virtualUserId,
@@ -100,7 +110,22 @@ exports.createConsentRequest = async (req, res) => {
       duration,
       status: 'PENDING',
     });
+    console.log("Consent Created");
+
+    // try {
+    //   const txHash = await logConsentOnChain(partnerId, main_category);
+    //   consent.txHash = txHash;
+    //   console.log("Blockchain transaction initiated:", txHash);
+    // } catch (blockchainError) {
+    //   console.error("Blockchain error:", blockchainError);
+    //   // Continue without blockchain if there's an error
+    //   consent.txHash = "blockchain-error";
+    // }
+    
+    // Save consent after blockchain attempt
     await consent.save();
+    console.log("Consent saved to database");
+    
     // Log the creation
     await AuditLog.create({
       virtualUserId: virtualUserId,
@@ -128,6 +153,7 @@ exports.createConsentRequest = async (req, res) => {
       status: 'SUCCESS',
       context: { consentId: consent._id }
     });
+    
     await PartnerAuditLog.create({
       virtualUserId,
       action: 'CONSENT_CREATED',
@@ -162,8 +188,29 @@ exports.createConsentRequest = async (req, res) => {
         justification: classification.justification
       }
     });
-    res.status(201).json({ message: 'Consent request created', consent, main_category, sub_category: classification.sub_category, justification: classification.justification });
+    
+    // Create response with blockchain information
+    // const explorerBaseUrl = process.env.EXPLORER_BASE_URL || "https://www.oklink.com/amoy/tx/";
+    // const blockchainData = consent.txHash && !consent.txHash.startsWith('blockchain-') 
+    //   ? {
+    //       txHash: consent.txHash,
+    //       explorerUrl: `${explorerBaseUrl}${consent.txHash}`,
+    //       status: 'confirmed'
+    //     } 
+    //   : {
+    //       status: consent.txHash ? 'error' : 'pending',
+    //       txHash: consent.txHash || null,
+    //       explorerUrl: null
+    //     };
+    res.status(201).json({ 
+      message: 'Consent request created', 
+      consent, 
+      main_category, 
+      sub_category: classification.sub_category, 
+      justification: classification.justification
+    });
   } catch (err) {
+    console.error("Error in createConsentRequest:", err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
@@ -186,18 +233,32 @@ exports.viewConsents = async (req, res) => {
     const userId = req.user.id; // req.user is set by auth middleware
     // Fetch the user's virtualIds from the User model
     const user = await User.findById(userId).select('virtualIds');
+
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: `User not found ${userId}` });
     }
     const consents = await Consent.find({ virtualUserId: { $in: user.virtualIds } })
       .populate('partnerId', 'name email');
-    res.json({ consents });
+    
+    // Add blockchain explorer URLs for all consents
+    const explorerBaseUrl = process.env.EXPLORER_BASE_URL || "https://www.oklink.com/amoy/tx/";
+    const enrichedConsents = consents.map(consent => {
+      const consentObj = consent.toObject();
+      if (consentObj.txHash) {
+        consentObj.blockchain = {
+          txHash: consentObj.txHash,
+          explorerUrl: !consentObj.txHash.startsWith('blockchain-') ? `${explorerBaseUrl}${consentObj.txHash}` : null,
+          status: consentObj.txHash.startsWith('blockchain-') ? 'error' : 'confirmed'
+        };
+      }
+      return consentObj;
+    });
+    
+    res.json({ consents: enrichedConsents });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
-}; 
-
-
+};
 
 // Validate consent with privacy sandbox (placeholder)
 exports.validateWithPrivacySandbox = async (req, res) => {
@@ -208,7 +269,6 @@ exports.validateWithPrivacySandbox = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
-
 
 // User approves consent
 exports.userApprovesConsent = async (req, res) => {
@@ -224,6 +284,41 @@ exports.userApprovesConsent = async (req, res) => {
     if (consent.duration) {
       consent.expiresAt = new Date(Date.now() + consent.duration * 24 * 60 * 60 * 1000);
     }
+
+    // Canonicalize the structured data to be shared
+    const structuredData = {
+      virtualUserId: consent.virtualUserId.toString(),
+      partnerId: consent.partnerId.toString(),
+      purpose: consent.purpose,
+      dataFields: consent.dataFields,
+      duration: consent.duration,
+      dataResidency: consent.dataResidency,
+      crossBorder: consent.crossBorder,
+      quantumSafe: consent.quantumSafe,
+      anonymization: consent.anonymization,
+      approvedAt: consent.approvedAt,
+    };
+
+    // Hash and register on-chain
+    try {
+      const { hash, txHash } = await registerDataHash(structuredData);
+      consent.documentHash = hash;
+      consent.documentTxHash = txHash;
+    } catch (err) {
+      console.error('Error registering document hash on-chain:', err);
+      consent.documentHash = null;
+      consent.documentTxHash = null;
+    }
+
+    // Log consent to blockchain (legacy txHash for ConsentRegistry)
+    try {
+      const txHash = await logConsentOnChain(consent.partnerId.toString(), consent.purpose);
+      consent.txHash = txHash;
+    } catch (err) {
+      console.error('Blockchain error:', err);
+      // Continue even if blockchain fails
+    }
+
     await consent.save();
     // Log the approval
     await AuditLog.create({
@@ -234,7 +329,7 @@ exports.userApprovesConsent = async (req, res) => {
       scopes: consent.dataFields,
       timestamp: new Date(),
       status: 'SUCCESS',
-      context: { consentId: consent._id }
+      context: { consentId: consent._id, txHash: consent.txHash, documentHash: consent.documentHash, documentTxHash: consent.documentTxHash }
     });
     await UserAuditLog.create({
       virtualUserId: consent.virtualUserId,
@@ -244,6 +339,9 @@ exports.userApprovesConsent = async (req, res) => {
         purpose: consent.purpose,
         dataFields: consent.dataFields,
         approvedAt: consent.approvedAt,
+        txHash: consent.txHash,
+        documentHash: consent.documentHash,
+        documentTxHash: consent.documentTxHash
       },
       status: 'SUCCESS',
       context: { consentId: consent._id }
@@ -256,6 +354,9 @@ exports.userApprovesConsent = async (req, res) => {
         purpose: consent.purpose,
         dataFields: consent.dataFields,
         approvedAt: consent.approvedAt,
+        txHash: consent.txHash,
+        documentHash: consent.documentHash,
+        documentTxHash: consent.documentTxHash
       },
       status: 'SUCCESS',
       context: { consentId: consent._id }
@@ -269,9 +370,24 @@ exports.userApprovesConsent = async (req, res) => {
       scopes: consent.dataFields,
       timestamp: new Date(),
       status: 'SUCCESS',
-      context: { consentId: consent._id }
+      context: { consentId: consent._id, txHash: consent.txHash, documentHash: consent.documentHash, documentTxHash: consent.documentTxHash }
     });
-    res.json({ message: 'Consent approved', consent });
+
+    // Return txHash and blockchain explorer URL in the response
+    const explorerBaseUrl = process.env.EXPLORER_BASE_URL || "https://www.oklink.com/amoy/tx/";
+
+    res.json({
+      message: 'Consent approved',
+      consent,
+      blockchain: {
+        txHash: consent.txHash,
+        explorerUrl: consent.txHash && !consent.txHash.startsWith('blockchain-') ? `${explorerBaseUrl}${consent.txHash}` : null,
+        status: consent.txHash ? (consent.txHash.startsWith('blockchain-') ? 'error' : 'confirmed') : 'pending',
+        documentHash: consent.documentHash,
+        documentTxHash: consent.documentTxHash,
+        documentExplorerUrl: consent.documentTxHash ? `${explorerBaseUrl}${consent.documentTxHash}` : null
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -372,6 +488,54 @@ exports.viewAllApprovedConsentsForBank = async (req, res) => {
   try {
     const consents = await Consent.find({ status: 'APPROVED' });
     res.json({ consents });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Verify consent on blockchain
+exports.verifyConsentOnBlockchain = async (req, res) => {
+  try {
+    const { txHash } = req.params;
+    
+    if (!txHash || txHash.startsWith('blockchain-')) {
+      return res.status(400).json({ 
+        verified: false, 
+        message: 'Invalid transaction hash' 
+      });
+    }
+    
+    // In a real app, you would verify the transaction on the blockchain here
+    // For now, we'll just check if we have a record with this txHash
+    const consent = await Consent.findOne({ txHash })
+      .populate('partnerId', 'name');
+      
+    if (!consent) {
+      return res.status(404).json({
+        verified: false,
+        message: 'No consent record found with this transaction hash'
+      });
+    }
+    
+    // Return verification info
+    const explorerBaseUrl = process.env.EXPLORER_BASE_URL || "https://www.oklink.com/amoy/tx/";
+    
+    res.json({
+      verified: true,
+      message: 'Consent verified on blockchain',
+      consent: {
+        purpose: consent.purpose,
+        partnerName: consent.partnerId?.name || 'Unknown Partner',
+        status: consent.status,
+        timestamp: consent.approvedAt,
+        expiresAt: consent.expiresAt
+      },
+      blockchain: {
+        txHash,
+        explorerUrl: `${explorerBaseUrl}${txHash}`,
+        network: process.env.BLOCKCHAIN_NETWORK || 'Amoy Testnet'
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

@@ -27,6 +27,8 @@ const UserComponent = () => {
       });
       const data = await res.json();
       if (res.ok) {
+        // Clear partnerToken cookie
+        document.cookie = 'partnerToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
         // Redirect to dashboard page after successful login
         window.location.href = '/user/dashboard';
       } else {

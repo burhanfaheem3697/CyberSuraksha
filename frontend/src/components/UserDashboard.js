@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import './UserDashboard.css';
+import BlockchainVerification from './BlockchainVerification';
+import BlockchainModal from './BlockchainModal';
+import DataRoomView from './DataRoomView';
+import Fuse from 'fuse.js';
 
 const UserDashboard = () => {
   const [user, setUser] = useState(null);
@@ -21,6 +25,60 @@ const UserDashboard = () => {
   const [newPassword, setNewPassword] = useState('');
   const [changePasswordMsg, setChangePasswordMsg] = useState(null);
   const [changePasswordError, setChangePasswordError] = useState(null);
+  
+  // Blockchain modal state
+  const [showBlockchainModal, setShowBlockchainModal] = useState(false);
+  const [blockchainTxData, setBlockchainTxData] = useState(null);
+
+  // Add state to track verification results for each consent
+  const [verificationResults, setVerificationResults] = useState({});
+
+  // User contracts state
+  const [userContracts, setUserContracts] = useState([]);
+  const [userContractsLoading, setUserContractsLoading] = useState(false);
+  const [userContractsErr, setUserContractsErr] = useState(null);
+  const [openDataRoomContractId, setOpenDataRoomContractId] = useState(null);
+
+  // Filter/search state for contracts
+  const [filterPurpose, setFilterPurpose] = useState('');
+  const [filterPartner, setFilterPartner] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Helper to get unique partners from contracts
+  const uniquePartners = Array.from(new Set(userContracts.map(c => typeof c.partnerId === 'object' ? c.partnerId?.name || c.partnerId?._id : c.partnerId)));
+  const statusOptions = Array.from(new Set(userContracts.map(c => c.status)));
+
+  // Fuzzy search setup for contracts (purpose and partner)
+  const fuse = new Fuse(userContracts, {
+    keys: [
+      { name: 'purpose', weight: 0.6 },
+      { name: 'partnerId.name', weight: 0.4 },
+      { name: 'partnerId', weight: 0.3 }, // fallback if partnerId is not populated
+    ],
+    threshold: 0.4, // adjust for fuzziness
+    ignoreLocation: true,
+  });
+
+  let fuzzyContracts = userContracts;
+  if (filterPurpose || filterPartner) {
+    // Build a search pattern
+    let searchPattern = '';
+    if (filterPurpose) searchPattern += filterPurpose + ' ';
+    if (filterPartner) searchPattern += filterPartner;
+    fuzzyContracts = fuse.search(searchPattern.trim()).map(result => result.item);
+  }
+
+  // Filtered contracts (apply status/date filters after fuzzy search)
+  const filteredContracts = fuzzyContracts.filter(contract => {
+    // Status filter
+    if (filterStatus && contract.status !== filterStatus) return false;
+    // Date filter
+    if (filterDateFrom && new Date(contract.createdAt) < new Date(filterDateFrom)) return false;
+    if (filterDateTo && new Date(contract.createdAt) > new Date(filterDateTo)) return false;
+    return true;
+  });
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -122,6 +180,20 @@ const UserDashboard = () => {
           setProfileLoading(false);
         });
     }
+    if (section === 'dataRoom' && user?._id) {
+      setUserContractsLoading(true);
+      setUserContractsErr(null);
+      fetch('http://localhost:5000/contract/user', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          setUserContracts(data.contracts || []);
+          setUserContractsLoading(false);
+        })
+        .catch(() => {
+          setUserContractsErr('Failed to fetch contracts');
+          setUserContractsLoading(false);
+        });
+    }
   }, [section, user]);
 
   const handleLoanChange = (e) => {
@@ -166,13 +238,40 @@ const UserDashboard = () => {
   // Approve consent handler
   const handleApproveConsent = async (consentId) => {
     try {
+      // Set a loading state for this consent
+      setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, loading: true } : c));
+      
       const res = await fetch(`http://localhost:5000/consent/approve/${consentId}`, {
         method: 'POST',
         credentials: 'include',
       });
       const data = await res.json();
       if (res.ok) {
-        setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, status: 'APPROVED' } : c));
+        // Update the consent with blockchain info
+        setConsents((prev) => prev.map(c => c._id === consentId ? { 
+          ...c, 
+          status: 'APPROVED',
+          loading: false,
+          txHash: data.blockchain?.txHash,
+          blockchain: data.blockchain
+        } : c));
+        
+        // Show blockchain modal if we have blockchain data
+        if (data.blockchain) {
+          const txStatus = data.blockchain.txHash ? 
+            (data.blockchain.txHash.startsWith('blockchain-') ? 'error' : 'confirmed') : 
+            'pending';
+          
+          setBlockchainTxData({
+            ...data.blockchain,
+            status: txStatus
+          });
+          setShowBlockchainModal(true);
+        } else {
+          // Fallback to simple alert if no blockchain data
+          alert('Consent approved!');
+        }
+        
         // Optionally refresh logs
         if (section === 'logs' && user?.id) {
           fetch(`http://localhost:5000/userauditlog/my`,{credentials : 'include'})
@@ -181,9 +280,13 @@ const UserDashboard = () => {
         }
       } else {
         alert(data.message || 'Failed to approve consent');
+        // Reset loading state
+        setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, loading: false } : c));
       }
     } catch (err) {
       alert('Network error');
+      // Reset loading state
+      setConsents((prev) => prev.map(c => c._id === consentId ? { ...c, loading: false } : c));
     }
   };
 
@@ -549,9 +652,123 @@ const UserDashboard = () => {
                   <div><b>Status:</b> {c.status}</div>
                   <div><b>Required Data Fields:</b> {Array.isArray(c.dataFields) ? c.dataFields.join(', ') : '-'}</div>
                   <div><b>Duration:</b> {c.duration} days</div>
+                  
+                  {/* Blockchain transaction info (legacy) */}
+                  {c.txHash && !c.txHash.startsWith('blockchain-') && (
+                    <div className="blockchain-info" style={{ 
+                      marginTop: 8, 
+                      padding: 8, 
+                      backgroundColor: '#f3f6ff', 
+                      borderRadius: 4, 
+                      border: '1px solidrgb(142, 13, 13)' 
+                    }}>
+                      <div style={{ fontSize: 12, wordBreak: 'break-all', color: '#d32f2f' }}><b>🔗 Blockchain Verification:</b></div>
+                      <div style={{ fontSize: 12, wordBreak: 'break-all', color: '#d32f2f' }}>
+                        TX: {c.txHash.substring(0, 18)}...
+                      </div>
+                      <div style={{ marginTop: 4 }}>
+                        <a 
+                          href={c.blockchain?.explorerUrl || `https://www.oklink.com/amoy/tx/${c.txHash}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ 
+                            color: '#2962ff', 
+                            textDecoration: 'none', 
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 13
+                          }}
+                        >
+                          <span>View on Blockchain Explorer</span>
+                          <span style={{ fontSize: 10 }}>↗</span>
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Verifiable Data Hash Proof */}
+                  {c.blockchain?.documentHash && (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <b>Data Hash:</b>
+                      <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{c.blockchain.documentHash}</span>
+                      {/* Visual check/cross */}
+                      {verificationResults[c._id] === true && (
+                        <span title="Verified on-chain" style={{ color: 'green', fontSize: 18 }}>✔️</span>
+                      )}
+                      {verificationResults[c._id] === false && (
+                        <span title="Not found on-chain" style={{ color: 'red', fontSize: 18 }}>❌</span>
+                      )}
+                    </div>
+                  )}
+                  {c.blockchain?.documentTxHash && (
+                    <div style={{ marginTop: 4 }}>
+                      <a
+                        href={c.blockchain.documentExplorerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#1976d2', textDecoration: 'none', fontSize: 13 }}
+                      >
+                        View Data Hash on Blockchain Explorer ↗
+                      </a>
+                    </div>
+                  )}
+                  {c.blockchain?.documentHash && (
+                    <button
+                      style={{ marginTop: 6, fontSize: 12, padding: '4px 10px' }}
+                      onClick={async () => {
+                        const res = await fetch('http://localhost:5000/consent/verify-hash', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ data: {
+                            virtualUserId: c.virtualUserId,
+                            partnerId: c.partnerId?._id || c.partnerId,
+                            purpose: c.purpose,
+                            dataFields: c.dataFields,
+                            duration: c.duration,
+                            dataResidency: c.dataResidency,
+                            crossBorder: c.crossBorder,
+                            quantumSafe: c.quantumSafe,
+                            anonymization: c.anonymization,
+                            approvedAt: c.approvedAt,
+                          } }),
+                        });
+                        const result = await res.json();
+                        setVerificationResults(prev => ({ ...prev, [c._id]: !!result.verified }));
+                        // Optionally, show an alert as well
+                        // alert(result.verified ? '✅ Data is verifiable on-chain!' : '❌ Data not found on-chain!');
+                      }}
+                    >
+                      Verify Data on Blockchain
+                    </button>
+                  )}
+                  
+                  {/* Transaction error message */}
+                  {c.txHash && c.txHash.startsWith('blockchain-') && (
+                    <div style={{ marginTop: 8, padding: 8, backgroundColor: '#fff9f9', borderRadius: 4, border: '1px solid #ffcdd2' }}>
+                      <div style={{ color: '#d32f2f', fontSize: 13 }}>
+                        ⚠️ Consent recorded in database, but blockchain verification unavailable
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Action buttons */}
                   {c.status === 'PENDING' && (
-                    <button style={{ marginTop: 8, background: '#43a047', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: 4 }} onClick={() => handleApproveConsent(c._id)}>
-                      Approve
+                    <button 
+                      style={{ 
+                        marginTop: 8, 
+                        background: '#43a047', 
+                        color: '#fff', 
+                        border: 'none', 
+                        padding: '8px 18px', 
+                        borderRadius: 4,
+                        cursor: c.loading ? 'wait' : 'pointer',
+                        opacity: c.loading ? 0.7 : 1
+                      }} 
+                      onClick={() => handleApproveConsent(c._id)}
+                      disabled={c.loading}
+                    >
+                      {c.loading ? 'Processing...' : 'Approve'}
                     </button>
                   )}
                   {c.status === 'APPROVED' && (
@@ -651,6 +868,132 @@ const UserDashboard = () => {
             </div>
           </div>
         );
+      case 'blockchain':
+        return <BlockchainVerification />;
+      case 'dataRoom':
+        return (
+          <div style={{ marginTop: 32 }}>
+            <h3>My Data Room Contracts</h3>
+            {/* Filter/Search UI */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <label style={{ fontWeight: 'bold' }}>Purpose<br/>
+                  <input type="text" value={filterPurpose} onChange={e => setFilterPurpose(e.target.value)} placeholder="Search purpose..." style={{ padding: 6, width: 140 }} />
+                </label>
+              </div>
+              <div>
+                <label style={{ fontWeight: 'bold' }}>Partner<br/>
+                  <select value={filterPartner} onChange={e => setFilterPartner(e.target.value)} style={{ padding: 6, width: 140 }}>
+                    <option value="">All</option>
+                    {uniquePartners.map((p, idx) => <option key={idx} value={p}>{p}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label style={{ fontWeight: 'bold' }}>Status<br/>
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ padding: 6, width: 120 }}>
+                    <option value="">All</option>
+                    {statusOptions.map((s, idx) => <option key={idx} value={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label style={{ fontWeight: 'bold' }}>From<br/>
+                  <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} style={{ padding: 6 }} />
+                </label>
+              </div>
+              <div>
+                <label style={{ fontWeight: 'bold' }}>To<br/>
+                  <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} style={{ padding: 6 }} />
+                </label>
+              </div>
+              <button onClick={() => { setFilterPurpose(''); setFilterPartner(''); setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); }} style={{ padding: '8px 16px', background: '#eee', border: '1px solid #ccc', borderRadius: 4, fontWeight: 'bold', marginLeft: 8 }}>Clear Filters</button>
+            </div>
+            {userContractsLoading && <div>Loading...</div>}
+            {userContractsErr && <div style={{ color: 'red' }}>{userContractsErr}</div>}
+            {!userContractsLoading && !userContractsErr && filteredContracts.length === 0 && <div>No contracts found.</div>}
+            {openDataRoomContractId ? (
+              <DataRoomView 
+                contractId={openDataRoomContractId} 
+                onClose={() => setOpenDataRoomContractId(null)} 
+                role="user"
+              />
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {filteredContracts.map((contract) => (
+                  <li key={contract._id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h4 style={{ margin: 0, color: '#1976d2' }}>Contract {contract._id.slice(-8)}</h4>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        background: contract.status === 'ACTIVE' ? '#43a047' : '#fbc02d',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        {contract.status}
+                      </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                      <div><strong>Bank:</strong> {typeof contract.bankId === 'object' ? contract.bankId?.name || contract.bankId?._id : contract.bankId}</div>
+                      <div><strong>Virtual User ID:</strong> {typeof contract.virtualUserId === 'object' ? contract.virtualUserId?._id : contract.virtualUserId}</div>
+                      <div><strong>Purpose:</strong> {contract.purpose}</div>
+                      <div><strong>Created:</strong> {new Date(contract.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <div style={{ marginBottom: '16px' }}>
+                      <strong>Allowed Fields:</strong>
+                      <div style={{ 
+                        marginTop: '8px',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '6px'
+                      }}>
+                        {contract.allowedFields && contract.allowedFields.map((field, idx) => (
+                          <span key={idx} style={{
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            background: '#e3f2fd',
+                            color: '#1976d2',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}>
+                            {field}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setOpenDataRoomContractId(contract._id)}
+                      style={{ 
+                        background: '#1976d2', 
+                        color: '#fff', 
+                        border: 'none', 
+                        padding: '12px 24px', 
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.target.style.background = '#1565c0';
+                        e.target.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.background = '#1976d2';
+                        e.target.style.transform = 'translateY(0)';
+                      }}
+                    >
+                      🔒 Open Secure Data Room
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
       default:
         return null;
     }
@@ -700,11 +1043,21 @@ const UserDashboard = () => {
           <button className={`dashboard-menu-btn${section === 'logs' ? ' active' : ''}`} onClick={() => setSection('logs')}>Logs</button>
           <button className={`dashboard-menu-btn${section === 'profile' ? ' active' : ''}`} onClick={() => setSection('profile')}>Profile</button>
           <button className={`dashboard-menu-btn${section === 'changePassword' ? ' active' : ''}`} onClick={() => setSection('changePassword')}>Change Password</button>
+          <button className={`dashboard-menu-btn${section === 'blockchain' ? ' active' : ''}`} onClick={() => setSection('blockchain')}>Blockchain Verification</button>
+          <button className={`dashboard-menu-btn${section === 'dataRoom' ? ' active' : ''}`} onClick={() => setSection('dataRoom')}>View My Data Room</button>
         </div>
         <div className="dashboard-section">
           {renderSection()}
         </div>
       </div>
+      
+      {/* Blockchain Transaction Modal */}
+      {showBlockchainModal && (
+        <BlockchainModal 
+          txData={blockchainTxData} 
+          onClose={() => setShowBlockchainModal(false)}
+        />
+      )}
     </div>
   );
 };

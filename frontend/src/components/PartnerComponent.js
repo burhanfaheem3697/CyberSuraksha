@@ -23,6 +23,8 @@ const PartnerComponent = () => {
       });
       const data = await res.json();
       if (res.ok) {
+        // Clear userToken cookie
+        document.cookie = 'userToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
         // Redirect to dashboard page after successful login
         window.location.href = '/partner/dashboard';
       } else {

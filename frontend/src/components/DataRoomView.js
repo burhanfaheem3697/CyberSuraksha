@@ -4,7 +4,7 @@ import './DataRoomView.css';
 
 const socket = io('http://localhost:5000'); // Adjust as needed
 
-const DataRoomView = ({ contractId, onClose }) => {
+const DataRoomView = ({ contractId, onClose, role = "partner" }) => {
   const [data, setData] = useState(null);
   const [consent, setConsent] = useState(null);
   const [contract, setContract] = useState(null);
@@ -34,25 +34,14 @@ const DataRoomView = ({ contractId, onClose }) => {
     }
   }, [contractId]);
 
-  // Log when component mounts (data room entry)
+  // Only set up logging and copy/drag prevention for partners
   useEffect(() => {
-    if (contractId) {
-      logInteraction('ENTERED_DATA_ROOM', {
-        description: 'Partner entered the data room',
-        timestamp: new Date().toISOString()
-      });
-    }
-  }, [contractId, logInteraction]);
-
-  // Event handlers to prevent copying
-  useEffect(() => {
+    if (role !== 'partner') return;
     // Function to prevent copy, cut, paste operations
     const preventCopyPaste = (e) => {
-      // Allow copy events originating from the copy buttons
       if (e.target.classList.contains('data-room-copy-btn')) {
         return true;
       }
-      
       e.preventDefault();
       logInteraction('ATTEMPTED_UNAUTHORIZED_COPY', {
         description: 'Partner attempted to copy data through browser shortcuts or context menu',
@@ -61,8 +50,6 @@ const DataRoomView = ({ contractId, onClose }) => {
       });
       return false;
     };
-
-    // Function to prevent drag operations
     const preventDrag = (e) => {
       e.preventDefault();
       logInteraction('ATTEMPTED_DRAG', {
@@ -71,15 +58,11 @@ const DataRoomView = ({ contractId, onClose }) => {
       });
       return false;
     };
-
-    // Add event listeners to prevent copying
     document.addEventListener('copy', preventCopyPaste);
     document.addEventListener('cut', preventCopyPaste);
     document.addEventListener('paste', preventCopyPaste);
     document.addEventListener('dragstart', preventDrag);
     document.addEventListener('contextmenu', preventCopyPaste);
-    
-    // Clean up event listeners when component unmounts
     return () => {
       document.removeEventListener('copy', preventCopyPaste);
       document.removeEventListener('cut', preventCopyPaste);
@@ -87,9 +70,21 @@ const DataRoomView = ({ contractId, onClose }) => {
       document.removeEventListener('dragstart', preventDrag);
       document.removeEventListener('contextmenu', preventCopyPaste);
     };
-  }, [logInteraction]);
+  }, [logInteraction, role]);
+
+  // Only log partner entry/view actions for partners
+  useEffect(() => {
+    if (role !== 'partner') return;
+    if (contractId) {
+      logInteraction('ENTERED_DATA_ROOM', {
+        description: 'Partner entered the data room',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [contractId, logInteraction, role]);
 
   useEffect(() => {
+    if (role !== 'partner') return;
     setLoading(true);
     fetch(`http://localhost:5000/partner/data-room/${contractId}`, {
       credentials: 'include'
@@ -106,7 +101,6 @@ const DataRoomView = ({ contractId, onClose }) => {
         setConsent(res.consent);
         setContract(res.contract);
         setLoading(false);
-        
         // Log data viewing
         logInteraction('VIEWED_DATA', {
           description: 'Partner viewed the data room contents',
@@ -119,7 +113,34 @@ const DataRoomView = ({ contractId, onClose }) => {
         setLoading(false);
         console.error('DataRoomView fetch error:', err);
       });
-  }, [contractId, logInteraction]);
+  }, [contractId, logInteraction, role]);
+
+  // For users, fetch data from the user endpoint (no logging)
+  useEffect(() => {
+    if (role === 'partner') return;
+    setLoading(true);
+    fetch(`http://localhost:5000/user/data-room/${contractId}`, {
+      credentials: 'include'
+    })
+      .then(res => {
+        if (!res.ok) {
+          return res.text().then(text => { throw new Error(`HTTP ${res.status}: ${text}`); });
+        }
+        return res.json();
+      })
+      .then(res => {
+        if (res.error) throw new Error(res.error);
+        setData(res.data);
+        setConsent(res.consent);
+        setContract(res.contract);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+        console.error('DataRoomView fetch error:', err);
+      });
+  }, [contractId, role]);
 
   // Auto-refresh logs when visible and after actions
   useEffect(() => {
@@ -153,24 +174,42 @@ const DataRoomView = ({ contractId, onClose }) => {
   }, [contractId, onClose]);
 
   const fetchLogs = useCallback(() => {
-    fetch(`http://localhost:5000/partner/interaction-logs/${contractId}`, {
-      credentials: 'include'
-    })
-      .then(res => {
-        if (!res.ok) {
-          return res.text().then(text => { throw new Error(`HTTP ${res.status}: ${text}`); });
-        }
-        return res.json();
+    if (role === 'user') {
+      fetch(`http://localhost:5000/user/data-room-logs/${contractId}`, {
+        credentials: 'include'
       })
-      .then(res => setLogs(res.logs || []))
-      .catch((err) => {
-        setLogs([]);
-        console.error('DataRoomView logs fetch error:', err);
-      });
-  }, [contractId]);
+        .then(res => {
+          if (!res.ok) {
+            return res.text().then(text => { throw new Error(`HTTP ${res.status}: ${text}`); });
+          }
+          return res.json();
+        })
+        .then(res => setLogs(res.logs || []))
+        .catch((err) => {
+          setLogs([]);
+          console.error('DataRoomView logs fetch error:', err);
+        });
+    } else {
+      fetch(`http://localhost:5000/partner/interaction-logs/${contractId}`, {
+        credentials: 'include'
+      })
+        .then(res => {
+          if (!res.ok) {
+            return res.text().then(text => { throw new Error(`HTTP ${res.status}: ${text}`); });
+          }
+          return res.json();
+        })
+        .then(res => setLogs(res.logs || []))
+        .catch((err) => {
+          setLogs([]);
+          console.error('DataRoomView logs fetch error:', err);
+        });
+    }
+  }, [contractId, role]);
 
-  // Handle field copying
+  // Only log copyField for partners
   const copyField = (fieldName, fieldValue) => {
+    if (role !== 'partner') return;
     navigator.clipboard.writeText(fieldValue).then(() => {
       setCopiedFields(prev => new Set([...prev, fieldName]));
       logInteraction('COPIED_FIELD', {
@@ -179,8 +218,6 @@ const DataRoomView = ({ contractId, onClose }) => {
         fieldValue: typeof fieldValue === 'string' ? fieldValue.substring(0, 10) + '...' : String(fieldValue).substring(0, 10) + '...',
         timestamp: new Date().toISOString()
       });
-      
-      // Reset copied state after 2 seconds
       setTimeout(() => {
         setCopiedFields(prev => {
           const newSet = new Set(prev);
@@ -191,13 +228,15 @@ const DataRoomView = ({ contractId, onClose }) => {
     });
   };
 
-  // Handle data room close
+  // Only log close for partners
   const handleClose = () => {
-    logInteraction('CLOSED_DATA_ROOM', {
-      description: 'Partner closed the data room',
-      sessionDuration: Date.now() - (window.dataRoomEntryTime || Date.now()),
-      timestamp: new Date().toISOString()
-    });
+    if (role === 'partner') {
+      logInteraction('CLOSED_DATA_ROOM', {
+        description: 'Partner closed the data room',
+        sessionDuration: Date.now() - (window.dataRoomEntryTime || Date.now()),
+        timestamp: new Date().toISOString()
+      });
+    }
     onClose();
   };
 
@@ -213,6 +252,19 @@ const DataRoomView = ({ contractId, onClose }) => {
     if (newShowLogs) {
       fetchLogs();
     }
+  };
+
+  // Helper to download data as JSON file
+  const downloadJSON = (data, filename) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   if (loading) return (
@@ -255,6 +307,11 @@ const DataRoomView = ({ contractId, onClose }) => {
       default: return '#757575';
     }
   };
+
+  // When displaying logs, filter for partner logs if role === 'user'
+  const filteredLogs = role === 'user'
+    ? logs.filter(log => log.actor === 'partner' || !log.actor) // fallback: if no actor, show only known partner actions
+    : logs;
 
   return (
     <div className="data-room-overlay" onCopy={(e) => e.preventDefault()}>
@@ -396,6 +453,14 @@ const DataRoomView = ({ contractId, onClose }) => {
         <div className="data-room-logs-header">
           <h2 className="data-room-section-title">
             📊 Access Logs
+            {role === 'user' && filteredLogs.length > 0 && (
+              <button
+                style={{ marginLeft: 16, padding: '4px 12px', fontSize: 14, borderRadius: 4, border: '1px solid #1976d2', background: '#e3f2fd', color: '#1976d2', cursor: 'pointer' }}
+                onClick={() => downloadJSON(filteredLogs, `contract_${contractId}_logs.json`)}
+              >
+                ⬇️ Export Logs
+              </button>
+            )}
           </h2>
           <button 
             onClick={toggleLogs}
@@ -408,13 +473,13 @@ const DataRoomView = ({ contractId, onClose }) => {
         {showLogs && (
           <div className="data-room-log-list">
             <h4 className="data-room-section-title">Recent Activity Logs (Last 20)</h4>
-            {logs.length === 0 ? (
+            {filteredLogs.length === 0 ? (
               <div className="data-room-empty">
                 📝 No activity logs found
               </div>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0 }}>
-                {logs.map((log, idx) => (
+                {filteredLogs.map((log, idx) => (
                   <li key={idx} className="data-room-log-item">
                     <div><b>Action:</b> {log.action}</div>
                     <div><b>Timestamp:</b> {new Date(log.timestamp).toLocaleString()}</div>

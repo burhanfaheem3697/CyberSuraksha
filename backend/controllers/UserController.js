@@ -7,6 +7,12 @@ const ApiError = require('../utils/api_Error.js')
 const { sendMail,emailVerificationMailGenToken, forgotPasswordMailGenContent }  = require("../utils/mail.js");
 const crypto = require('crypto')
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const VirtualID = require('../models/VirtualID');
+const Contract = require('../models/Contract');
+const Consent = require('../models/Consent');
+const { maskFields } = require('../utils/fieldMasker');
+const AuditLog = require('../models/AuditLog');
+const { Types } = require('mongoose');
 
 // Register a new user
 
@@ -389,4 +395,88 @@ exports.refreshAccessToken = asyncHandler(async (req,res) => {
   )
 
 })
+
+// GET /user/data-room/:contractId
+exports.getUserDataRoom = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { contractId } = req.params;
+    const contract = await Contract.findById(contractId).lean();
+    if (!contract) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+    // Check that the user owns the virtualUserId
+    const virtualIdDoc = await VirtualID.findById(contract.virtualUserId).lean();
+    if (!virtualIdDoc || String(virtualIdDoc.userId) !== String(userId)) {
+      return res.status(403).json({ error: 'You are not authorized to access this data room' });
+    }
+    // Get user bank data
+    const bankData = await UserBankData.findOne({ user_id: virtualIdDoc.userId }).lean();
+    if (!bankData) {
+      return res.status(404).json({ error: 'Bank data not found for user' });
+    }
+    // Filter only allowed fields
+    const filtered = {};
+    contract.allowedFields.forEach(field => {
+      if (bankData.hasOwnProperty(field)) {
+        filtered[field] = bankData[field];
+      }
+    });
+    // Use the proper masking utility
+    const fieldsToMask = [
+      'income',
+      'credit_score',
+      'transaction_summary',
+      'employer',
+      'last_updated'
+    ];
+    const masked = maskFields(filtered, fieldsToMask);
+    // Consent metadata
+    let expiresIn = null;
+    let revoked = false;
+    if (contract.consentId) {
+      try {
+        const consent = await Consent.findById(contract.consentId).lean();
+        if (consent) {
+          expiresIn = consent.expiresAt ? new Date(consent.expiresAt).getTime() - Date.now() : null;
+          revoked = consent.status === 'REVOKED';
+        }
+      } catch (consentErr) {
+        console.error('[getUserDataRoom] Error fetching consent:', consentErr);
+      }
+    }
+    res.json({
+      data: masked,
+      consent: { expiresIn, revoked },
+      contract: contract
+    });
+  } catch (err) {
+    console.error('[getUserDataRoom] Unexpected error:', err);
+    res.status(500).json({ error: 'Error fetching data room data', details: err.message });
+  }
+};
+
+// GET /user/data-room-logs/:contractId
+exports.getUserDataRoomLogs = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { contractId } = req.params;
+  const contract = await Contract.findById(contractId).lean();
+  if (!contract) {
+    return res.status(404).json({ error: 'Contract not found' });
+  }
+  // Check that the user owns the virtualUserId
+  const virtualIdDoc = await VirtualID.findById(contract.virtualUserId).lean();
+  if (!virtualIdDoc || String(virtualIdDoc.userId) !== String(userId)) {
+    return res.status(403).json({ error: 'You are not authorized to access these logs' });
+  }
+  // Get all partner logs for this contract
+  const contractObjectId = new Types.ObjectId(contractId);
+  const logs = await AuditLog.find({
+    partnerId: contract.partnerId,
+    'context.contractId': contractObjectId
+  })
+    .sort({ timestamp: -1 })
+    .limit(20);
+  res.json({ logs });
+});
 
