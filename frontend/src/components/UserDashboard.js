@@ -120,6 +120,11 @@ const UserDashboard = () => {
   const [consentsLoading, setConsentsLoading] = useState(false);
   const [consentsErr, setConsentsErr] = useState(null);
 
+  // Pending approvals state
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(false);
+  const [approvalsErr, setApprovalsErr] = useState(null);
+
   // Audit logs state
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -150,6 +155,22 @@ const UserDashboard = () => {
         .catch(() => {
           setConsentsErr('Failed to fetch consent requests');
           setConsentsLoading(false);
+        });
+
+      // Fetch pending approvals
+      setApprovalsLoading(true);
+      setApprovalsErr(null);
+      fetch(`http://localhost:5000/consent/pending-approvals/${user.virtualUserId}`, {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => {
+          setPendingApprovals(data.approvals || []);
+          setApprovalsLoading(false);
+        })
+        .catch(() => {
+          setApprovalsErr('Failed to fetch pending approvals');
+          setApprovalsLoading(false);
         });
     }
     if (section === 'logs' && user?._id) {
@@ -460,6 +481,27 @@ const UserDashboard = () => {
     });
   };
 
+  const handleApprovalDecision = async (id, decision) => {
+    try {
+      await fetch(`http://localhost:5000/consent/approve/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
+        credentials: 'include'
+      });
+      // Refresh pending approvals
+      fetch(`http://localhost:5000/consent/pending-approvals/${user.virtualUserId}`, {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => {
+          setPendingApprovals(data.approvals || []);
+        });
+    } catch {
+      alert('Failed to update approval status.');
+    }
+  };
+
   const renderSection = () => {
     switch (section) {
       case 'loan':
@@ -641,6 +683,23 @@ const UserDashboard = () => {
         return (
           <div style={{ marginTop: 32 }}>
             <h3>Consent Requests</h3>
+            {approvalsLoading ? (
+              <div>Loading pending approvals...</div>
+            ) : approvalsErr ? (
+              <div>{approvalsErr}</div>
+            ) : pendingApprovals.length === 0 ? (
+              <div>No pending approvals.</div>
+            ) : (
+              <ul>
+                {pendingApprovals.map((approval) => (
+                  <li key={approval._id}>
+                    {approval.purpose} - {approval.status}
+                    <button onClick={() => handleApprovalDecision(approval._id, 'APPROVED')}>Approve</button>
+                    <button onClick={() => handleApprovalDecision(approval._id, 'REJECTED')}>Reject</button>
+                  </li>
+                ))}
+              </ul>
+            )}
             {consentsLoading && <div>Loading...</div>}
             {consentsErr && <div style={{ color: 'red' }}>{consentsErr}</div>}
             {!consentsLoading && !consentsErr && consents.length === 0 && <div>No consent requests found.</div>}

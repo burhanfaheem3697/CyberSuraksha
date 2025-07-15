@@ -5,8 +5,7 @@ const Partner = require('../models/Partner');
 // GET /partnerauditlog/my (requires partner auth)
 exports.getLogsForPartner = async (req, res) => {
   try {
-    const partnerId = req.partner.partnerId;
-    // Find all logs where details.partnerId matches this partner
+    const partnerId = req.partner._id;     // Find all logs where details.partnerId matches this partner
     const logs = await PartnerAuditLog.find({ 'details.partnerId': partnerId }).sort({ timestamp: -1 });
     res.json({ logs });
   } catch (err) {

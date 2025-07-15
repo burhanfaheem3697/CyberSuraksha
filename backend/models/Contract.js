@@ -21,10 +21,35 @@ const contractSchema = new mongoose.Schema({
     default: 'UPLOADED'
   },
   data: { type: mongoose.Schema.Types.Mixed },
+
+  // Clean Room & Differential Privacy configurations
+  executionMode: {
+    type: String,
+    enum: ['rawview', 'cleanroom'],
+    default: 'rawview',
+  },
+  dpEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  dpConfig: {
+    epsilon: { type: Number, default: 1.0 },
+    sensitivity: { type: Number, default: 1 },
+  },
+  executionLogs: [
+    {
+      modelId: { type: mongoose.Schema.Types.ObjectId, ref: 'ModelUpload' },
+      resultSummary: String,
+      executedAt: Date,
+      outputDP: Boolean,
+      status: String, // 'success', 'error', 'pending'
+    }
+  ],
+
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-module.exports = mongoose.model('Contract', contractSchema); 
+module.exports = mongoose.model('Contract', contractSchema);

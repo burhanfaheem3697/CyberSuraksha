@@ -76,7 +76,7 @@ exports.userCreatesLoanRequest = async (req, res) => {
 // View all loan requests (for this partner)
 exports.viewLoanRequests = async (req, res) => {
   try {
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id;
     // Find all loan requests associated with this partner's virtual IDs
     const loanRequests = await LoanRequest.find({ 
       partner_id: partnerId })
@@ -151,7 +151,7 @@ exports.statusUpdater = async (req, res) => {
 exports.partnerApproveLoanRequest = async (req, res) => {
   try {
     const { loanRequestId } = req.body;
-    const partnerId = req.partner.partnerId
+    const partnerId = req.partner._id;
     const loanRequest = await LoanRequest.findById(loanRequestId);
     if (!loanRequest) {
       return res.status(404).json({ message: 'Loan request not found' });

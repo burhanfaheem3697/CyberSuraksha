@@ -1,4 +1,5 @@
 const Consent = require('../models/Consent');
+const ConsentDraft = require('../models/ConsentDraft');
 const PolicyRule = require('../models/PolicyRule');
 const AuditLog = require('../models/AuditLog');
 const User = require('../models/User')
@@ -23,7 +24,7 @@ async function getUserIdFromVirtualId(virtualUserId) {
 exports.createConsentRequest = async (req, res) => {
   try {
     const { virtualUserId, rawPurpose, dataFields, duration,dataResidency,crossBorder,quantumSafe,anonymization } = req.body;
-    const partnerId = req.partner.partnerId; // req.partner set by partner auth middleware
+    const partnerId = req.partner._id; // req.partner set by partner auth middleware
     // Fetch partner info for AI validation
     const partner = await Partner.findById(partnerId);
     if (!partner) {
@@ -218,7 +219,7 @@ exports.createConsentRequest = async (req, res) => {
 // View all approved consents for this partner
 exports.viewApprovedConsents = async (req, res) => {
   try {
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id;
     const consents = await Consent.find({ partnerId, status: 'APPROVED' })
       .populate('partnerId', 'name');
     res.json({ consents });
@@ -540,3 +541,26 @@ exports.verifyConsentOnBlockchain = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 }; 
+
+// Partner sends approval notification
+exports.sendApprovalNotification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const draft = await ConsentDraft.findById(id);
+    
+    if (!draft || draft.status !== 'FINALIZED') {
+      return res.status(400).json({ message: 'Draft not found or not finalized' });
+    }
+    // Logic to notify user
+    // For example, emit a socket event or send an email
+    await UserAuditLog.create({
+      virtualUserId: draft.virtualUserId,
+      action: 'APPROVAL_REQUEST_SENT',
+      details: { draftId: draft._id },
+      status: 'INFO'
+    });
+    res.json({ message: 'Approval notification sent' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};

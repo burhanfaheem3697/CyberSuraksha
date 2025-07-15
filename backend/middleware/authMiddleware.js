@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const { getUserIdFromVirtualId } = require('../utils/resolveVirtualId');
+const User = require('../models/User');
 
 const authMiddleware = (req, res, next) => {
   try {

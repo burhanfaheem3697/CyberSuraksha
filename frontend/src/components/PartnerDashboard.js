@@ -1,7 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import './UserDashboard.css';
 import DataRoomView from './DataRoomView';
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Divider,
+  useToast,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  Button,
+  Flex,
+  Spacer
+} from '@chakra-ui/react';
+import { AddIcon, ViewIcon } from '@chakra-ui/icons';
+import ConsentDraftForm from '../components/ConsentDraftForm';
+import ConsentDraftList from '../components/ConsentDraftList';
 const PartnerDashboard = () => {
+  //  const [partner, setPartner] = useState(null);
+  // const [isLoading, setIsLoading] = useState(true);
+  // const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // const [section, setSection] = useState('home'); 
+  const [uploadedModels, setUploadedModels] = useState([]);
+  const [uploadingModel, setUploadingModel] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState('');
+  const [executionResult, setExecutionResult] = useState(null);
+  const [modelName, setModelName] = useState('');               // 
+  const [allowedPurposes, setAllowedPurposes] = useState('');   // 
+
+  const [modelFile, setModelFile] = useState(null);
+  const [modelType, setModelType] = useState('detection');
+
+  const [partnerContracts, setPartnerContracts] = useState([]);
+  const [partnerContractsLoading, setPartnerContractsLoading] = useState(false);
+  const [partnerContractsErr, setPartnerContractsErr] = useState(null);
+
   const [partner, setPartner] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,6 +63,10 @@ const PartnerDashboard = () => {
   const [consentMsg, setConsentMsg] = useState(null);
   const [consentErr, setConsentErr] = useState(null);
   const [consentBlockchain, setConsentBlockchain] = useState(null);
+
+  const [virtualUserId, setVirtualUserId] = useState('');
+  const [tabIndex, setTabIndex] = useState(0);
+  const toast = useToast();
 
   // Loan requests state
   const [loans, setLoans] = useState([]);
@@ -48,15 +94,82 @@ const PartnerDashboard = () => {
   const [budgetErr, setBudgetErr] = useState(null);
 
   // Partner contracts state
-  const [partnerContracts, setPartnerContracts] = useState([]);
-  const [partnerContractsLoading, setPartnerContractsLoading] = useState(false);
-  const [partnerContractsErr, setPartnerContractsErr] = useState(null);
+  // const [partnerContracts, setPartnerContracts] = useState([]);
+  // const [partnerContractsLoading, setPartnerContractsLoading] = useState(false);
+  // const [partnerContractsErr, setPartnerContractsErr] = useState(null);
 
   // Data room state
   const [openDataRoomContractId, setOpenDataRoomContractId] = useState(null);
 
   // Add state to track verification results for each consent
   const [verificationResults, setVerificationResults] = useState({});
+
+  // In a real application, you would fetch the virtual user ID from a dropdown or search
+  // For this example, we'll use a hardcoded value
+  const handleSetVirtualUserId = () => {
+    // This would typically come from a form or selection
+    setVirtualUserId('60f1a5c5e6b3f32d8c9e4b7a'); // Example ID
+    toast({
+      title: 'Virtual User Selected',
+      description: 'You can now create consent drafts for this user.',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+  
+  // Function to handle creating a draft from any request type (loan, insurance, budgeting)
+  const handleCreateDraftFromRequest = (virtualId) => {
+    setVirtualUserId(virtualId);
+    setSection('consentDrafts');
+    setTabIndex(0); // Switch to the Create Draft tab
+    toast({
+      title: 'Virtual User Selected',
+      description: 'You can now create consent drafts for this user.',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
+  const handleConsentCreated = () => {
+    // Switch to the list tab after creating a consent
+    setTabIndex(1);
+    toast({
+      title: 'Success',
+      description: 'Consent has been created successfully.',
+      status: 'success',
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  // Check authentication status on component mount
+  // Fetch partner's uploaded models
+  const fetchUploadedModels = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/model/list', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setUploadedModels(data.models || []);
+        }
+      } else {
+        console.error('Failed to fetch models:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error);
+    }
+  };
+
+
+
 
   // Check authentication status on component mount
   useEffect(() => {
@@ -72,7 +185,13 @@ const PartnerDashboard = () => {
           // You should implement proper partner authentication checking
           setIsAuthenticated(true);
           // Set a dummy partner object for now - you should fetch actual partner data
-          setPartner({ id: 'partner-id', name: 'Partner' });
+          const partnerData = await res.json();
+          setPartner(partnerData);
+          
+          // If we're on the model execution section, fetch the models
+          if (section === 'modelExec') {
+            fetchUploadedModels();
+          }
         } else {
           // Redirect to login if not authenticated
           window.location.href = '/partner';
@@ -131,7 +250,7 @@ const PartnerDashboard = () => {
           console.error('Approved consents fetch error:', err);
         });
     }
-    if (section === 'logs' && partner?.id) {
+    if (section === 'logs') {
       setLogsLoading(true);
       setLogsErr(null);
       fetch(`http://localhost:5000/partnerauditlog/my`, { credentials: 'include' })
@@ -195,8 +314,92 @@ const PartnerDashboard = () => {
     }
   }, [section, partner]);
 
+  // Fetch uploaded models when model execution section is active
+  useEffect(() => {
+    if (section === 'modelExec') {
+      const fetchUploadedModels = async () => {
+        try {
+          const res = await fetch('http://localhost:5000/model/list', {
+            credentials: 'include'
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setUploadedModels(data.models || []);
+          }
+        } catch (err) {
+          console.error('Failed to fetch uploaded models:', err);
+        }
+      };
+      fetchUploadedModels();
+    }
+  }, [section]);
+
   const handleConsentChange = (e) => {
     setConsentForm({ ...consentForm, [e.target.name]: e.target.value });
+  };
+
+  const handleModelUpload = async (e) => {
+    e.preventDefault();
+    if (!modelFile || !modelName || !allowedPurposes) return;
+    setUploadingModel(true);
+    const formData = new FormData();
+    formData.append('modelFile', modelFile);
+    formData.append('modelName', modelName);
+    
+    // turn the comma-sep string into an array on the backend
+    const purposesArray = allowedPurposes
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s);
+  formData.append('allowedPurposes', JSON.stringify(purposesArray));  
+  
+    try {
+      const res = await fetch('http://localhost:5000/model/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+      setUploadedModels(prev => [...prev, data.model]);
+      alert('Model uploaded successfully!');
+    } catch (err) {
+      console.error('Model upload error:', err);
+      alert(err.message);
+    } finally {
+      setUploadingModel(false);
+    }
+  };
+
+  const handleRunModel = async () => {
+    if (!selectedContractId || !selectedModelId) {
+      alert('Please select both a contract and a model');
+      return;
+    }
+    
+    setExecutionResult(null);
+    try {
+      const res = await fetch(`http://localhost:5000/execution/${selectedContractId}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ modelId: selectedModelId })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to execute model');
+      }
+      
+      const data = await res.json();
+      setExecutionResult(data);
+    } catch (err) {
+      console.error('Execution error:', err);
+      alert(`Error: ${err.message}`);
+    }
   };
 
   const handleConsentSubmit = async (e) => {
@@ -454,7 +657,7 @@ const PartnerDashboard = () => {
                 color: '#2e7d32',
                 borderRadius: '4px'
               }}>
-                <div><strong>✓ Success:</strong> {consentMsg}</div>
+                <div><strong> Success:</strong> {consentMsg}</div>
                 
                 {/* If we have blockchain data from the response */}
                 {consentBlockchain && consentBlockchain.txHash && !consentBlockchain.txHash.startsWith('blockchain-') && (
@@ -485,12 +688,108 @@ const PartnerDashboard = () => {
                 color: '#c62828',
                 borderRadius: '4px' 
               }}>
-                <strong>✗ Error:</strong> {consentErr}
+                <strong> Error:</strong> {consentErr}
               </div>
             )}
             </form>
           </div>
         );
+      case 'consentDrafts':
+      return (
+        <div style={{ marginTop: 32 }}>
+          <h3 style={{ color: '#00bfff', fontSize: '1.3rem', marginBottom: 18, fontWeight: 700 }}>
+            Consent Draft Management
+          </h3>
+          <p style={{ color: '#a0a0a0', marginBottom: 24 }}>
+            Create, validate, and manage consent drafts for your users
+          </p>
+
+          {!virtualUserId ? (
+            <div
+              style={{
+                background: 'rgba(30, 32, 60, 0.6)',
+                padding: 16,
+                borderRadius: 10,
+                border: '1px solid #23234a',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 12,
+                alignItems: 'center',
+                marginBottom: 24,
+              }}
+            >
+              <span style={{ color: '#00bfff', fontWeight: 600 }}>ℹ Select a Virtual User</span>
+              <span style={{ color: '#eaf6ff' }}>
+                You need to select a virtual user before creating consent drafts.
+              </span>
+              <button
+                style={{
+                  marginLeft: 'auto',
+                  background: 'linear-gradient(135deg, #1976d2 0%, #00bfff 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,191,255,0.18)',
+                }}
+                onClick={handleSetVirtualUserId}
+              >
+                Select User
+              </button>
+            </div>
+          ) : (
+            <Tabs
+              variant="enclosed"
+              index={tabIndex}
+              onChange={(index) => setTabIndex(index)}
+              mb={5}
+            >
+              <TabList mb="1em">
+                <Tab>
+                  <AddIcon mr={2} /> Create Draft
+                </Tab>
+                <Tab>
+                  <ViewIcon mr={2} /> View Drafts
+                </Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel p={0}>
+                  <ConsentDraftForm
+                    virtualUserId={virtualUserId}
+                    onSuccess={handleConsentCreated}
+                  />
+                </TabPanel>
+                <TabPanel p={0}>
+                  <ConsentDraftList virtualUserId={virtualUserId} />
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          )}
+
+          <div
+            style={{
+              marginTop: 32,
+              background: 'rgba(30, 32, 60, 0.6)',
+              padding: 24,
+              borderRadius: 12,
+              border: '1px solid #23234a',
+            }}
+          >
+            <h4 style={{ color: '#00bfff', margin: '0 0 12px 0' }}>About Consent Drafts</h4>
+            <p style={{ color: '#eaf6ff', marginBottom: 8 }}>
+              Consent drafts allow partners to create and validate consent requests before sending them to
+              users. The validation process ensures compliance with India's DPDP Act and other privacy
+              regulations.
+            </p>
+            <p style={{ color: '#eaf6ff' }}>
+              The workflow includes purpose classification, field normalization, rule validation, and
+              LLM-based justification validation. Only validated drafts can be finalized and sent to users for
+              approval.
+            </p>
+          </div>
+        </div>
+      );
       case 'loans':
         return (
           <div style={{ marginTop: 32 }}>
@@ -511,7 +810,22 @@ const PartnerDashboard = () => {
                     </button>
                   )}
                   {loan.status === 'APPROVED' && (
-                    <span style={{ marginTop: 8, color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: 8, alignItems: 'center' }}>
+                      <span style={{ color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                      <button 
+                        style={{ 
+                          background: '#1976d2', 
+                          color: '#fff', 
+                          border: 'none', 
+                          padding: '8px 18px', 
+                          borderRadius: 4,
+                          cursor: 'pointer'
+                        }} 
+                        onClick={() => handleCreateDraftFromRequest(loan.virtualId)}
+                      >
+                        Create Draft
+                      </button>
+                    </div>
                   )}
                 </li>
               ))}
@@ -620,8 +934,23 @@ const PartnerDashboard = () => {
                     </button>
                   )}
                   {req.status === 'APPROVED' && (
-                    <span style={{ marginTop: 8, color: '#43a047', fontWeight: 'bold' }}>Approved</span>
-                  )}
+              <div style={{ display: 'flex', gap: '10px', marginTop: 8, alignItems: 'center' }}>
+                <span style={{ color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                <button 
+                  style={{ 
+                    background: '#1976d2', 
+                    color: '#fff', 
+                    border: 'none', 
+                    padding: '8px 18px', 
+                    borderRadius: 4,
+                    cursor: 'pointer'
+                  }} 
+                  onClick={() => handleCreateDraftFromRequest(req.virtualId)}
+                >
+                  Create Draft
+                </button>
+              </div>
+            )}
                 </li>
               ))}
             </ul>
@@ -657,8 +986,41 @@ const PartnerDashboard = () => {
                     </button>
                   )}
                   {req.status === 'APPROVED' && (
-                    <span style={{ marginTop: 8, color: '#43a047', fontWeight: 'bold' }}>Approved</span>
-                  )}
+              <div style={{ display: 'flex', gap: '10px', marginTop: 8, alignItems: 'center' }}>
+                <span style={{ color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                <button 
+                  style={{ 
+                    background: '#1976d2', 
+                    color: '#fff', 
+                    border: 'none', 
+                    padding: '8px 18px', 
+                    borderRadius: 4,
+                    cursor: 'pointer'
+                  }} 
+                  onClick={() => handleCreateDraftFromRequest(req.virtualId)}
+                >
+                  Create Draft
+                </button>
+              </div>
+            )}
+                  {req.status === 'APPROVED' && (
+              <div style={{ display: 'flex', gap: '10px', marginTop: 8, alignItems: 'center' }}>
+                <span style={{ color: '#43a047', fontWeight: 'bold' }}>Approved</span>
+                <button 
+                  style={{ 
+                    background: '#1976d2', 
+                    color: '#fff', 
+                    border: 'none', 
+                    padding: '8px 18px', 
+                    borderRadius: 4,
+                    cursor: 'pointer'
+                  }} 
+                  onClick={() => handleCreateDraftFromRequest(req.virtualId)}
+                >
+                  Create Draft
+                </button>
+              </div>
+            )}
                 </li>
               ))}
             </ul>
@@ -778,7 +1140,171 @@ const PartnerDashboard = () => {
             )}
           </div>
         );
-      default:
+      case 'modelUpload':
+          return (
+            <div style={{ marginTop: 32 }}>
+              <h3>Upload Model</h3>
+              <form onSubmit={handleModelUpload} style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 400 }}>
+                {/* Model Name */}
+                <input
+                  type="text"
+                  placeholder="Model name (e.g. LoanScorerV1)"
+                  value={modelName}
+                  onChange={e => setModelName(e.target.value)}
+                  required
+                  style={{ padding: 8, fontSize: 14 }}
+                />
+        
+                {/* Allowed Purposes */}
+                <input
+                  type="text"
+                  placeholder="Allowed purposes (comma separated)"
+                  value={allowedPurposes}
+                  onChange={e => setAllowedPurposes(e.target.value)}
+                  required
+                  style={{ padding: 8, fontSize: 14 }}
+                />
+        
+                {/* File picker */}
+                <input
+                  type="file"
+                  accept=".onnx,.pkl,.js"
+                  onChange={e => setModelFile(e.target.files[0])}
+                  required
+                />
+        
+                <button
+                  type="submit"
+                  disabled={uploadingModel}
+                  style={{ padding: '10px 0', fontSize: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}
+                >
+                  {uploadingModel ? 'Uploading…' : 'Upload Model'}
+                </button>
+              </form>
+            </div>
+          );        
+      case 'modelExec':
+        return (
+          <div style={{ 
+            maxWidth: '800px', 
+            margin: '32px auto', 
+            padding: '24px', 
+            backgroundColor: '#fff', 
+            borderRadius: '8px', 
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{ marginBottom: '24px', color: 'black' }}>Run Model on Contract</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'black' }}>Select Contract</label>
+              <select 
+                value={selectedContractId} 
+                onChange={e => setSelectedContractId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ddd',
+                  fontSize: '14px',
+                  marginBottom: '16px',
+                  color: 'black'
+                }}
+              >
+                <option value=''>-- Select a contract --</option>
+                {partnerContracts.map(c => (
+                  <option key={c._id} value={c._id}>
+                    Contract {c._id.slice(-8)} - {c.purpose || 'No description'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div style={{ marginBottom: '24px', color: 'black' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'black' }}>Select Model</label>
+              <select 
+                value={selectedModelId} 
+                onChange={e => setSelectedModelId(e.target.value)}
+                disabled={uploadedModels.length === 0}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '4px',
+                  border: '1px solid #ddd',
+                  fontSize: '14px',
+                  marginBottom: '16px',
+                  color: 'black',
+                  backgroundColor: uploadedModels.length === 0 ? '#f5f5f5' : '#fff'
+                }}
+              >
+                <option value=''>
+                  {uploadedModels.length === 0 ? 'No models available. Upload a model first.' : '-- Select a model --'}
+                </option>
+                {uploadedModels.map(model => (
+                  <option key={model._id} value={model._id}>
+                    {model.modelName || `Model ${model._id.slice(-6)}`} ({model.modelFormat || 'unknown'})
+                  </option>
+                ))}
+              </select>
+              
+              {uploadedModels.length === 0 && (
+                <p style={{ color: '#666', fontSize: '14px', marginTop: '8px' }}>
+                  You haven't uploaded any models yet. Go to "Upload Model" to add a new model.
+                </p>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={handleRunModel}
+                disabled={!selectedContractId || !selectedModelId || uploadedModels.length === 0}
+                style={{
+                  padding: '10px 24px',
+                  backgroundColor: (!selectedContractId || !selectedModelId || uploadedModels.length === 0) ? '#ccc' : '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: (!selectedContractId || !selectedModelId || uploadedModels.length === 0) ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s',
+                  ':hover': {
+                    backgroundColor: (!selectedContractId || !selectedModelId || uploadedModels.length === 0) ? '#ccc' : '#1565c0'
+                  }
+                }}
+              >
+                Run Model
+              </button>
+            </div>
+            
+            {executionResult && (
+              <div style={{ 
+                marginTop: '32px', 
+                padding: '16px', 
+                backgroundColor: '#f8f9fa', 
+                borderRadius: '4px',
+                borderLeft: '4px solid #1976d2'
+              }}>
+                <h4 style={{ marginTop: 0, color: '#1976d2' }}>Execution Results</h4>
+                <pre style={{ 
+                  whiteSpace: 'pre-wrap', 
+                  wordBreak: 'break-word',
+                  margin: 0,
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  maxHeight: '400px',
+                  overflow: 'auto',
+                  padding: '12px',
+                  backgroundColor: '#fff',
+                  border: '1px solid #eee',
+                  borderRadius: '4px'
+                }}>
+                  {JSON.stringify(executionResult, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        );
+        default:
         return null;
     }
   };
@@ -819,19 +1345,23 @@ const PartnerDashboard = () => {
         </div>
         <div className="dashboard-menu">
           <button className={`dashboard-menu-btn${section === 'consent' ? ' active' : ''}`} onClick={() => setSection('consent')}>Generate Consent Request</button>
+          <button className={`dashboard-menu-btn${section === 'consentDrafts' ? ' active' : ''}`} onClick={() => setSection('consentDrafts')}>Consent Drafts</button>
           <button className={`dashboard-menu-btn${section === 'loans' ? ' active' : ''}`} onClick={() => setSection('loans')}>View Loan Requests</button>
           <button className={`dashboard-menu-btn${section === 'insurance' ? ' active' : ''}`} onClick={() => setSection('insurance')}>View Insurance Requests</button>
           <button className={`dashboard-menu-btn${section === 'budgeting' ? ' active' : ''}`} onClick={() => setSection('budgeting')}>View Budget Requests</button>
           <button className={`dashboard-menu-btn${section === 'approved' ? ' active' : ''}`} onClick={() => setSection('approved')}>View Approved Consents</button>
           <button className={`dashboard-menu-btn${section === 'logs' ? ' active' : ''}`} onClick={() => setSection('logs')}>View Logs</button>
           <button className={`dashboard-menu-btn${section === 'partnerContracts' ? ' active' : ''}`} onClick={() => setSection('partnerContracts')}>View My Contracts</button>
+          <button className={`dashboard-menu-btn${section === 'modelUpload' ? ' active' : ''}`} onClick={() => setSection('modelUpload')}>Upload Model</button>
+          <button className={`dashboard-menu-btn${section === 'modelExec' ? ' active' : ''}`} onClick={() => setSection('modelExec')}>Run Model</button>
+          <button className="dashboard-menu-btn" onClick={handleLogout}>Logout</button>
         </div>
-        <div className="dashboard-section">
+        </div>
+        <div className="dashboard-section">``
           {renderSection()}
         </div>
       </div>
-    </div>
   );
 };
 
-export default PartnerDashboard; 
+export default PartnerDashboard;

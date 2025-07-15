@@ -2,7 +2,7 @@ const { ethers } = require("ethers");
 require("dotenv").config({ path: __dirname + "/../../blockChain/.env" });
 
 const CONTRACT_ABI = require("../../blockChain/artifacts/contracts/ConsentRegistry.sol/ConsentRegistry.json").abi;
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Use env or default
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0x63cd37d1AF2F6bb49FBE080066A9446370EE90B5"; // Use env or default
 
 // Setup provider with a try-catch to handle errors
 let provider, wallet, contract;
@@ -33,6 +33,10 @@ async function logConsentOnChain(partnerId, purpose) {
     
     console.log(`Calling blockchain with partnerId: ${partnerIdStr}, purpose: ${purpose}`);
     const tx = await contract.giveConsent(partnerIdStr, purpose);
+
+    if (typeof partnerIdStr !== "string" || typeof purpose !== "string") {
+      throw new Error("partnerId and purpose must be strings");
+    }
     const receipt = await tx.wait();
     return receipt.hash;
   } catch (error) {

@@ -31,12 +31,6 @@ exports.registerPartner = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
 // List all partners (for dropdowns, etc.)
 exports.listPartners = async (req, res) => {
   try {
@@ -65,4 +59,9 @@ exports.loginPartner = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
+};
+
+exports.logoutPartner = async (req, res) => {
+  res.cookie('partnerToken', '', { expires: new Date(0) });
+  res.status(200).json({ message: 'Partner logged out successfully' });
 };

@@ -8,7 +8,7 @@ const AuditLog = require('../models/AuditLog');
 exports.userCreatesBudgetingRequest = async (req, res) => {
   try {
     const { categories, totalPlannedAmount, duration, purpose, partnerId, notes } = req.body;
-    const userId = req.user.userId; // req.user set by auth middleware
+    const userId = req.user.id; // req.user set by auth middleware
     if (!partnerId) {
       return res.status(400).json({ message: 'partnerId is required to create a budgeting request.' });
     }
@@ -75,7 +75,7 @@ exports.userCreatesBudgetingRequest = async (req, res) => {
 // View all budgeting requests (for this partner)
 exports.viewBudgetingRequests = async (req, res) => {
   try {
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id;
     const budgetingRequests = await BudgetingRequest.find({ partner_id: partnerId });
     res.json({ budgetingRequests });
   } catch (err) {
@@ -148,7 +148,7 @@ exports.statusUpdater = async (req, res) => {
 exports.partnerApproveBudgetingRequest = async (req, res) => {
   try {
     const { budgetingRequestId } = req.body;
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id;
     const budgetingRequest = await BudgetingRequest.findById(budgetingRequestId);
     if (!budgetingRequest) {
       return res.status(404).json({ message: 'Budgeting request not found' });

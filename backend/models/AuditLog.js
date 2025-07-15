@@ -8,7 +8,16 @@ const AuditLogSchema = new mongoose.Schema({
   scopes: [{ type: String }],
   timestamp: { type: Date, default: Date.now },
   status: { type: String },
-  context: { type: mongoose.Schema.Types.Mixed }
+  context: { type: mongoose.Schema.Types.Mixed },
+
+  // Clean Room execution context
+  executionContext: {
+    modelId: { type: mongoose.Schema.Types.ObjectId, ref: 'ModelUpload' },
+    dpUsed: { type: Boolean, default: false },
+    dpEpsilon: { type: Number },
+    fieldsAccessed: [{ type: String }],
+    resultHash: { type: String }
+  }
 });
 
-module.exports = mongoose.model('AuditLog', AuditLogSchema); 
+module.exports = mongoose.model('AuditLog', AuditLogSchema);

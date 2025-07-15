@@ -8,7 +8,7 @@ const AuditLog = require('../models/AuditLog');
 exports.userCreatesInsuranceRequest = async (req, res) => {
   try {
     const { insuranceType, coverageAmount, tenureYears, purpose, partnerId } = req.body;
-    const userId = req.user.userId; // req.user set by auth middleware
+    const userId = req.user.id; // FIXED: use req.user.id instead of req.user.userId
     if (!partnerId) {
       return res.status(400).json({ message: 'partnerId is required to create an insurance request.' });
     }
@@ -74,7 +74,7 @@ exports.userCreatesInsuranceRequest = async (req, res) => {
 // View all insurance requests (for this partner)
 exports.viewInsuranceRequests = async (req, res) => {
   try {
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id;
     const insuranceRequests = await InsuranceRequest.find({ partner_id: partnerId });
     res.json({ insuranceRequests });
   } catch (err) {
@@ -147,7 +147,7 @@ exports.statusUpdater = async (req, res) => {
 exports.partnerApproveInsuranceRequest = async (req, res) => {
   try {
     const { insuranceRequestId } = req.body;
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id;
     const insuranceRequest = await InsuranceRequest.findById(insuranceRequestId);
     if (!insuranceRequest) {
       return res.status(404).json({ message: 'Insurance request not found' });

@@ -42,6 +42,9 @@ router.post('/verify-hash', async (req, res) => {
 // GET /consent/partner/:id (requires partner auth)
 // router.get('/partner/:id', partnerAuth, ...);
 
+// POST /consent/send-approval/:id (requires partner auth)
+router.post('/send-approval/:id', partnerAuthMiddleware, ConsentController.sendApprovalNotification);
+
 // GET /consent/approved-for-bank (for bank to see all approved consents)
 router.get('/approved-for-bank',bankAuthMiddleware, ConsentController.viewAllApprovedConsentsForBank);
 

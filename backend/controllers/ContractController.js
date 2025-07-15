@@ -92,7 +92,7 @@ exports.viewAllContractsForBank = async (req, res) => {
 // View all contracts for the authenticated partner
 exports.viewAllContractsForPartner = async (req, res) => {
   try {
-    const partnerId = req.partner.partnerId;
+    const partnerId = req.partner._id; 
     if (!partnerId) return res.status(401).json({ message: 'Unauthorized: partnerId missing' });
     const contractsForPartner = await Contract.find({ partnerId }).sort({ createdAt: -1 }).populate('bankId', 'name');
     res.json({ contracts: contractsForPartner });
